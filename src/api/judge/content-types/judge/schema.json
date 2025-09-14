@@ -1,0 +1,30 @@
+{
+  "kind": "collectionType",
+  "collectionName": "judges",
+  "info": {
+    "singularName": "judge",
+    "pluralName": "judges",
+    "displayName": "Judge"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "event": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::event.event",
+      "inversedBy": "judges"
+    },
+    "users_permissions_user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user",
+      "mappedBy": "judge"
+    }
+  }
+}

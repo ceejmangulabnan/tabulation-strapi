@@ -1,0 +1,33 @@
+{
+  "kind": "collectionType",
+  "collectionName": "criteria",
+  "info": {
+    "singularName": "criterion",
+    "pluralName": "criteria",
+    "displayName": "Criterion"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "label": {
+      "type": "string"
+    },
+    "weight": {
+      "type": "decimal"
+    },
+    "event": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::event.event",
+      "inversedBy": "criteria"
+    },
+    "category": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::category.category",
+      "inversedBy": "criteria"
+    }
+  }
+}

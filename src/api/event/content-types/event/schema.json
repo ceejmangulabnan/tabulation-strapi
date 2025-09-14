@@ -1,0 +1,51 @@
+{
+  "kind": "collectionType",
+  "collectionName": "events",
+  "info": {
+    "singularName": "event",
+    "pluralName": "events",
+    "displayName": "Event"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "text"
+    },
+    "judges": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::judge.judge",
+      "mappedBy": "event"
+    },
+    "criteria": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::criterion.criterion",
+      "mappedBy": "event"
+    },
+    "participants": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::participant.participant",
+      "mappedBy": "event"
+    },
+    "scores": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::score.score",
+      "mappedBy": "event"
+    },
+    "categories": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::category.category",
+      "mappedBy": "event"
+    }
+  }
+}
