@@ -71,6 +71,9 @@
       "relation": "oneToOne",
       "target": "api::judge.judge",
       "inversedBy": "users_permissions_user"
+    },
+    "userRole": {
+      "type": "string"
     }
   }
 }
