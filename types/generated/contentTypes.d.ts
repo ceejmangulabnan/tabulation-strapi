@@ -1095,7 +1095,8 @@ export interface PluginUsersPermissionsUser
       Schema.Attribute.SetMinMaxLength<{
         minLength: 3;
       }>;
-    userRole: Schema.Attribute.String;
+    userRole: Schema.Attribute.Enumeration<['admin', 'judge']> &
+      Schema.Attribute.DefaultTo<'judge'>;
   };
 }
 
