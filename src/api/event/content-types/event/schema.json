@@ -46,6 +46,10 @@
       "relation": "oneToMany",
       "target": "api::category.category",
       "mappedBy": "event"
+    },
+    "active": {
+      "type": "boolean",
+      "default": false
     }
   }
 }

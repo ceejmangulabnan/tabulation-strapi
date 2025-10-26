@@ -73,7 +73,13 @@
       "inversedBy": "users_permissions_user"
     },
     "userRole": {
-      "type": "string"
+      "type": "enumeration",
+      "required": true,
+      "default": "judge",
+      "enum": [
+        "admin",
+        "judge"
+      ]
     }
   }
 }
