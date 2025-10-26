@@ -530,6 +530,10 @@ export interface ApiEventEvent extends Struct.CollectionTypeSchema {
       'api::criterion.criterion'
     >;
     description: Schema.Attribute.Text;
+    judge_request: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::judge-request.judge-request'
+    >;
     judges: Schema.Attribute.Relation<'oneToMany', 'api::judge.judge'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::event.event'> &
@@ -541,6 +545,39 @@ export interface ApiEventEvent extends Struct.CollectionTypeSchema {
     >;
     publishedAt: Schema.Attribute.DateTime;
     scores: Schema.Attribute.Relation<'oneToMany', 'api::score.score'>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiJudgeRequestJudgeRequest
+  extends Struct.CollectionTypeSchema {
+  collectionName: 'judge_requests';
+  info: {
+    displayName: 'Judge Request';
+    pluralName: 'judge-requests';
+    singularName: 'judge-request';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    event: Schema.Attribute.Relation<'oneToOne', 'api::event.event'>;
+    judge: Schema.Attribute.Relation<'oneToOne', 'api::judge.judge'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::judge-request.judge-request'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    request_status: Schema.Attribute.Enumeration<
+      ['approved', 'pending', 'rejected']
+    >;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -562,6 +599,10 @@ export interface ApiJudgeJudge extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     event: Schema.Attribute.Relation<'manyToOne', 'api::event.event'>;
+    judge_request: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::judge-request.judge-request'
+    >;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::judge.judge'> &
       Schema.Attribute.Private;
@@ -1154,6 +1195,7 @@ declare module '@strapi/strapi' {
       'api::criterion.criterion': ApiCriterionCriterion;
       'api::department.department': ApiDepartmentDepartment;
       'api::event.event': ApiEventEvent;
+      'api::judge-request.judge-request': ApiJudgeRequestJudgeRequest;
       'api::judge.judge': ApiJudgeJudge;
       'api::participant.participant': ApiParticipantParticipant;
       'api::score.score': ApiScoreScore;

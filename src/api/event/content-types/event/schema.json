@@ -50,6 +50,12 @@
     "active": {
       "type": "boolean",
       "default": false
+    },
+    "judge_request": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::judge-request.judge-request",
+      "mappedBy": "event"
     }
   }
 }
