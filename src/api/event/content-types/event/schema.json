@@ -51,9 +51,9 @@
       "type": "boolean",
       "default": false
     },
-    "judge_request": {
+    "judge_requests": {
       "type": "relation",
-      "relation": "oneToOne",
+      "relation": "oneToMany",
       "target": "api::judge-request.judge-request",
       "mappedBy": "event"
     }

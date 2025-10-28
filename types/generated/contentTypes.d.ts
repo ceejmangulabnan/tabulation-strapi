@@ -493,8 +493,8 @@ export interface ApiEventEvent extends Struct.CollectionTypeSchema {
       'api::criterion.criterion'
     >;
     description: Schema.Attribute.Text;
-    judge_request: Schema.Attribute.Relation<
-      'oneToOne',
+    judge_requests: Schema.Attribute.Relation<
+      'oneToMany',
       'api::judge-request.judge-request'
     >;
     judges: Schema.Attribute.Relation<'oneToMany', 'api::judge.judge'>;
@@ -529,7 +529,7 @@ export interface ApiJudgeRequestJudgeRequest
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    event: Schema.Attribute.Relation<'oneToOne', 'api::event.event'>;
+    event: Schema.Attribute.Relation<'manyToOne', 'api::event.event'>;
     judge: Schema.Attribute.Relation<'oneToOne', 'api::judge.judge'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -562,10 +562,6 @@ export interface ApiJudgeJudge extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     event: Schema.Attribute.Relation<'manyToOne', 'api::event.event'>;
-    judge_request: Schema.Attribute.Relation<
-      'oneToOne',
-      'api::judge-request.judge-request'
-    >;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::judge.judge'> &
       Schema.Attribute.Private;

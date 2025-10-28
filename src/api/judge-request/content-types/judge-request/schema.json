@@ -13,15 +13,14 @@
   "attributes": {
     "event": {
       "type": "relation",
-      "relation": "oneToOne",
+      "relation": "manyToOne",
       "target": "api::event.event",
-      "inversedBy": "judge_request"
+      "inversedBy": "judge_requests"
     },
     "judge": {
       "type": "relation",
       "relation": "oneToOne",
-      "target": "api::judge.judge",
-      "inversedBy": "judge_request"
+      "target": "api::judge.judge"
     },
     "request_status": {
       "type": "enumeration",
