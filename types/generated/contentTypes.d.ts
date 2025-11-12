@@ -497,7 +497,7 @@ export interface ApiEventEvent extends Struct.CollectionTypeSchema {
       'oneToMany',
       'api::judge-request.judge-request'
     >;
-    judges: Schema.Attribute.Relation<'oneToMany', 'api::judge.judge'>;
+    judges: Schema.Attribute.Relation<'manyToMany', 'api::judge.judge'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::event.event'> &
       Schema.Attribute.Private;
@@ -561,7 +561,7 @@ export interface ApiJudgeJudge extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    event: Schema.Attribute.Relation<'manyToOne', 'api::event.event'>;
+    events: Schema.Attribute.Relation<'manyToMany', 'api::event.event'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::judge.judge'> &
       Schema.Attribute.Private;

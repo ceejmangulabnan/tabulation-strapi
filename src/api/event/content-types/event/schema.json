@@ -19,9 +19,9 @@
     },
     "judges": {
       "type": "relation",
-      "relation": "oneToMany",
+      "relation": "manyToMany",
       "target": "api::judge.judge",
-      "mappedBy": "event"
+      "mappedBy": "events"
     },
     "criteria": {
       "type": "relation",
