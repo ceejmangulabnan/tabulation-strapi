@@ -10,7 +10,6 @@ export default factories.createCoreController(
     async create(ctx) {
       const requestBody = ctx.request.body;
       const data = requestBody.data;
-      console.log("Judge Request Body", requestBody);
 
       // Get and filter events linked to current user (judge)
       const existingRequest = await strapi
@@ -23,13 +22,27 @@ export default factories.createCoreController(
           },
         });
 
-      console.log("Existing Request", existingRequest);
-
       if (existingRequest) {
-        return ctx.conflict("Existing judge request found");
+        return ctx.conflict("Existing judge request found", {
+          type: "hasExistingRequest",
+        });
       }
 
-      console.log("Valid Request: Creating new judge request");
+      const isJudgingEvent = await strapi
+        .documents("api::event.event")
+        .findFirst({
+          populate: "*",
+          filters: {
+            judges: { documentId: data.judge.connect[0] },
+          },
+        });
+
+      if (isJudgingEvent) {
+        return ctx.conflict("User is already judging event", {
+          type: "isJudging",
+        });
+      }
+
       const response = await strapi
         .documents("api::judge-request.judge-request")
         .create({ data, populate: "*" });
