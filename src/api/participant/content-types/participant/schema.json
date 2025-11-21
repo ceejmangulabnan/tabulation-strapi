@@ -35,6 +35,12 @@
       "relation": "manyToOne",
       "target": "api::department.department",
       "inversedBy": "participants"
+    },
+    "scores": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::score.score",
+      "mappedBy": "participant"
     }
   }
 }

@@ -2,6 +2,8 @@
  * event controller
  */
 
-import { factories } from '@strapi/strapi'
+import { factories } from "@strapi/strapi";
 
-export default factories.createCoreController('api::event.event');
+export default factories.createCoreController("api::event.event", {
+  async getActiveCategories(ctx) {},
+});

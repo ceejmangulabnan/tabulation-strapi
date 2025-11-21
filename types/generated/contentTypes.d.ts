@@ -384,13 +384,10 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    criteria: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::criterion.criterion'
-    >;
     event: Schema.Attribute.Relation<'manyToOne', 'api::event.event'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -400,9 +397,11 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     name: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
+    scores: Schema.Attribute.Relation<'oneToMany', 'api::score.score'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    weight: Schema.Attribute.Decimal;
   };
 }
 
@@ -417,7 +416,6 @@ export interface ApiCriterionCriterion extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
-    category: Schema.Attribute.Relation<'manyToOne', 'api::category.category'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -567,6 +565,7 @@ export interface ApiJudgeJudge extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     name: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
+    scores: Schema.Attribute.Relation<'oneToMany', 'api::score.score'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -605,6 +604,7 @@ export interface ApiParticipantParticipant extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     name: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
+    scores: Schema.Attribute.Relation<'oneToMany', 'api::score.score'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -622,13 +622,19 @@ export interface ApiScoreScore extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
+    category: Schema.Attribute.Relation<'manyToOne', 'api::category.category'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     event: Schema.Attribute.Relation<'manyToOne', 'api::event.event'>;
+    judge: Schema.Attribute.Relation<'manyToOne', 'api::judge.judge'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<'oneToMany', 'api::score.score'> &
       Schema.Attribute.Private;
+    participant: Schema.Attribute.Relation<
+      'manyToOne',
+      'api::participant.participant'
+    >;
     publishedAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &

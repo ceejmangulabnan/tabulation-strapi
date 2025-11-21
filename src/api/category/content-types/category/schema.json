@@ -14,17 +14,24 @@
     "name": {
       "type": "string"
     },
-    "criteria": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::criterion.criterion",
-      "mappedBy": "category"
-    },
     "event": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::event.event",
       "inversedBy": "categories"
+    },
+    "scores": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::score.score",
+      "mappedBy": "category"
+    },
+    "weight": {
+      "type": "decimal"
+    },
+    "active": {
+      "type": "boolean",
+      "default": false
     }
   }
 }

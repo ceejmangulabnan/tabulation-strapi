@@ -22,12 +22,6 @@
       "relation": "manyToOne",
       "target": "api::event.event",
       "inversedBy": "criteria"
-    },
-    "category": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::category.category",
-      "inversedBy": "criteria"
     }
   }
 }
