@@ -405,36 +405,6 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   };
 }
 
-export interface ApiCriterionCriterion extends Struct.CollectionTypeSchema {
-  collectionName: 'criteria';
-  info: {
-    displayName: 'Criterion';
-    pluralName: 'criteria';
-    singularName: 'criterion';
-  };
-  options: {
-    draftAndPublish: false;
-  };
-  attributes: {
-    createdAt: Schema.Attribute.DateTime;
-    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    event: Schema.Attribute.Relation<'manyToOne', 'api::event.event'>;
-    label: Schema.Attribute.String;
-    locale: Schema.Attribute.String & Schema.Attribute.Private;
-    localizations: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::criterion.criterion'
-    > &
-      Schema.Attribute.Private;
-    publishedAt: Schema.Attribute.DateTime;
-    updatedAt: Schema.Attribute.DateTime;
-    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    weight: Schema.Attribute.Decimal;
-  };
-}
-
 export interface ApiDepartmentDepartment extends Struct.CollectionTypeSchema {
   collectionName: 'departments';
   info: {
@@ -455,7 +425,7 @@ export interface ApiDepartmentDepartment extends Struct.CollectionTypeSchema {
       'api::department.department'
     > &
       Schema.Attribute.Private;
-    name: Schema.Attribute.String;
+    name: Schema.Attribute.String & Schema.Attribute.Unique;
     participants: Schema.Attribute.Relation<
       'oneToMany',
       'api::participant.participant'
@@ -486,10 +456,6 @@ export interface ApiEventEvent extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    criteria: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::criterion.criterion'
-    >;
     description: Schema.Attribute.Text;
     judge_requests: Schema.Attribute.Relation<
       'oneToMany',
@@ -1156,7 +1122,6 @@ declare module '@strapi/strapi' {
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
       'api::category.category': ApiCategoryCategory;
-      'api::criterion.criterion': ApiCriterionCriterion;
       'api::department.department': ApiDepartmentDepartment;
       'api::event.event': ApiEventEvent;
       'api::judge-request.judge-request': ApiJudgeRequestJudgeRequest;

@@ -23,12 +23,6 @@
       "target": "api::judge.judge",
       "mappedBy": "events"
     },
-    "criteria": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::criterion.criterion",
-      "mappedBy": "event"
-    },
     "participants": {
       "type": "relation",
       "relation": "oneToMany",
