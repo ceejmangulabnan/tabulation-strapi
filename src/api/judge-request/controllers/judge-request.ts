@@ -34,6 +34,7 @@ export default factories.createCoreController(
           populate: "*",
           filters: {
             judges: { documentId: data.judge.connect[0] },
+            documentId: data.event.connect[0],
           },
         });
 
