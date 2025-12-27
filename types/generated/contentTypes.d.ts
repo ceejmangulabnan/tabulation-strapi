@@ -457,6 +457,10 @@ export interface ApiEventEvent extends Struct.CollectionTypeSchema {
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     description: Schema.Attribute.Text;
+    event_status: Schema.Attribute.Enumeration<
+      ['draft', 'active', 'inactive', 'finished']
+    > &
+      Schema.Attribute.DefaultTo<'draft'>;
     judge_requests: Schema.Attribute.Relation<
       'oneToMany',
       'api::judge-request.judge-request'

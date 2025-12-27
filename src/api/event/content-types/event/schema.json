@@ -50,6 +50,16 @@
       "relation": "oneToMany",
       "target": "api::judge-request.judge-request",
       "mappedBy": "event"
+    },
+    "event_status": {
+      "type": "enumeration",
+      "default": "draft",
+      "enum": [
+        "draft",
+        "active",
+        "inactive",
+        "finished"
+      ]
     }
   }
 }
