@@ -46,9 +46,9 @@
       "target": "api::score.score",
       "mappedBy": "segment"
     },
-    "participant": {
+    "eliminated_participants": {
       "type": "relation",
-      "relation": "oneToOne",
+      "relation": "oneToMany",
       "target": "api::participant.participant",
       "mappedBy": "eliminated_at_segment"
     }

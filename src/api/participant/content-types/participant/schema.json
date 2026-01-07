@@ -19,6 +19,7 @@
     },
     "participant_status": {
       "type": "enumeration",
+      "default": "active",
       "enum": [
         "active",
         "eliminated"
@@ -61,9 +62,12 @@
     },
     "eliminated_at_segment": {
       "type": "relation",
-      "relation": "oneToOne",
+      "relation": "manyToOne",
       "target": "api::segment.segment",
-      "inversedBy": "participant"
+      "inversedBy": "eliminated_participants"
+    },
+    "notes": {
+      "type": "text"
     }
   }
 }

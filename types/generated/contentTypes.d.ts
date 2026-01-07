@@ -562,7 +562,7 @@ export interface ApiParticipantParticipant extends Struct.CollectionTypeSchema {
       'api::department.department'
     >;
     eliminated_at_segment: Schema.Attribute.Relation<
-      'oneToOne',
+      'manyToOne',
       'api::segment.segment'
     >;
     event: Schema.Attribute.Relation<'manyToOne', 'api::event.event'>;
@@ -575,8 +575,10 @@ export interface ApiParticipantParticipant extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Private;
     name: Schema.Attribute.String;
+    notes: Schema.Attribute.Text;
     number: Schema.Attribute.Integer;
-    participant_status: Schema.Attribute.Enumeration<['active', 'eliminated']>;
+    participant_status: Schema.Attribute.Enumeration<['active', 'eliminated']> &
+      Schema.Attribute.DefaultTo<'active'>;
     publishedAt: Schema.Attribute.DateTime;
     scores: Schema.Attribute.Relation<'oneToMany', 'api::score.score'>;
     updatedAt: Schema.Attribute.DateTime;
@@ -636,6 +638,10 @@ export interface ApiSegmentSegment extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
+    eliminated_participants: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::participant.participant'
+    >;
     event: Schema.Attribute.Relation<'manyToOne', 'api::event.event'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -645,10 +651,6 @@ export interface ApiSegmentSegment extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     name: Schema.Attribute.String;
     order: Schema.Attribute.Integer;
-    participant: Schema.Attribute.Relation<
-      'oneToOne',
-      'api::participant.participant'
-    >;
     publishedAt: Schema.Attribute.DateTime;
     scores: Schema.Attribute.Relation<'oneToMany', 'api::score.score'>;
     segment_status: Schema.Attribute.Enumeration<['draft', 'active', 'closed']>;
