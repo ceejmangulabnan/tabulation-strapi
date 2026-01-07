@@ -37,6 +37,12 @@
       "relation": "manyToOne",
       "target": "api::judge.judge",
       "inversedBy": "scores"
+    },
+    "segment": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::segment.segment",
+      "inversedBy": "scores"
     }
   }
 }

@@ -14,12 +14,6 @@
     "name": {
       "type": "string"
     },
-    "event": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::event.event",
-      "inversedBy": "categories"
-    },
     "scores": {
       "type": "relation",
       "relation": "oneToMany",
@@ -32,6 +26,12 @@
     "active": {
       "type": "boolean",
       "default": false
+    },
+    "segment": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::segment.segment",
+      "inversedBy": "categories"
     }
   }
 }

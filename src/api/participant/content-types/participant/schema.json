@@ -14,6 +14,23 @@
     "name": {
       "type": "string"
     },
+    "number": {
+      "type": "integer"
+    },
+    "participant_status": {
+      "type": "enumeration",
+      "enum": [
+        "active",
+        "eliminated"
+      ]
+    },
+    "gender": {
+      "type": "enumeration",
+      "enum": [
+        "male",
+        "female"
+      ]
+    },
     "event": {
       "type": "relation",
       "relation": "manyToOne",
@@ -41,6 +58,12 @@
       "relation": "oneToMany",
       "target": "api::score.score",
       "mappedBy": "participant"
+    },
+    "eliminated_at_segment": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::segment.segment",
+      "inversedBy": "participant"
     }
   }
 }

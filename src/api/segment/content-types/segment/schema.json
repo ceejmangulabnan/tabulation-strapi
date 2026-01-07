@@ -1,0 +1,56 @@
+{
+  "kind": "collectionType",
+  "collectionName": "segments",
+  "info": {
+    "singularName": "segment",
+    "pluralName": "segments",
+    "displayName": "Segment"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string"
+    },
+    "order": {
+      "type": "integer"
+    },
+    "weight": {
+      "type": "decimal"
+    },
+    "segment_status": {
+      "type": "enumeration",
+      "enum": [
+        "draft",
+        "active",
+        "closed"
+      ]
+    },
+    "event": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::event.event",
+      "inversedBy": "segments"
+    },
+    "categories": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::category.category",
+      "mappedBy": "segment"
+    },
+    "scores": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::score.score",
+      "mappedBy": "segment"
+    },
+    "participant": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::participant.participant",
+      "mappedBy": "eliminated_at_segment"
+    }
+  }
+}

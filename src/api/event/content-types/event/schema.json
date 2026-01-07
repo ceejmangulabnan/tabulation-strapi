@@ -35,12 +35,6 @@
       "target": "api::score.score",
       "mappedBy": "event"
     },
-    "categories": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::category.category",
-      "mappedBy": "event"
-    },
     "active": {
       "type": "boolean",
       "default": false
@@ -60,6 +54,12 @@
         "inactive",
         "finished"
       ]
+    },
+    "segments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::segment.segment",
+      "mappedBy": "event"
     }
   }
 }

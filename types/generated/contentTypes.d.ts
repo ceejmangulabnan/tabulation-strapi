@@ -388,7 +388,6 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    event: Schema.Attribute.Relation<'manyToOne', 'api::event.event'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -398,6 +397,7 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
     name: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     scores: Schema.Attribute.Relation<'oneToMany', 'api::score.score'>;
+    segment: Schema.Attribute.Relation<'manyToOne', 'api::segment.segment'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -449,10 +449,6 @@ export interface ApiEventEvent extends Struct.CollectionTypeSchema {
   };
   attributes: {
     active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
-    categories: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::category.category'
-    >;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -476,6 +472,7 @@ export interface ApiEventEvent extends Struct.CollectionTypeSchema {
     >;
     publishedAt: Schema.Attribute.DateTime;
     scores: Schema.Attribute.Relation<'oneToMany', 'api::score.score'>;
+    segments: Schema.Attribute.Relation<'oneToMany', 'api::segment.segment'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -564,7 +561,12 @@ export interface ApiParticipantParticipant extends Struct.CollectionTypeSchema {
       'manyToOne',
       'api::department.department'
     >;
+    eliminated_at_segment: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::segment.segment'
+    >;
     event: Schema.Attribute.Relation<'manyToOne', 'api::event.event'>;
+    gender: Schema.Attribute.Enumeration<['male', 'female']>;
     headshot: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
@@ -573,6 +575,8 @@ export interface ApiParticipantParticipant extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Private;
     name: Schema.Attribute.String;
+    number: Schema.Attribute.Integer;
+    participant_status: Schema.Attribute.Enumeration<['active', 'eliminated']>;
     publishedAt: Schema.Attribute.DateTime;
     scores: Schema.Attribute.Relation<'oneToMany', 'api::score.score'>;
     updatedAt: Schema.Attribute.DateTime;
@@ -606,10 +610,52 @@ export interface ApiScoreScore extends Struct.CollectionTypeSchema {
       'api::participant.participant'
     >;
     publishedAt: Schema.Attribute.DateTime;
+    segment: Schema.Attribute.Relation<'manyToOne', 'api::segment.segment'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     value: Schema.Attribute.Decimal;
+  };
+}
+
+export interface ApiSegmentSegment extends Struct.CollectionTypeSchema {
+  collectionName: 'segments';
+  info: {
+    displayName: 'Segment';
+    pluralName: 'segments';
+    singularName: 'segment';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    categories: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::category.category'
+    >;
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    event: Schema.Attribute.Relation<'manyToOne', 'api::event.event'>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::segment.segment'
+    > &
+      Schema.Attribute.Private;
+    name: Schema.Attribute.String;
+    order: Schema.Attribute.Integer;
+    participant: Schema.Attribute.Relation<
+      'oneToOne',
+      'api::participant.participant'
+    >;
+    publishedAt: Schema.Attribute.DateTime;
+    scores: Schema.Attribute.Relation<'oneToMany', 'api::score.score'>;
+    segment_status: Schema.Attribute.Enumeration<['draft', 'active', 'closed']>;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    weight: Schema.Attribute.Decimal;
   };
 }
 
@@ -1132,6 +1178,7 @@ declare module '@strapi/strapi' {
       'api::judge.judge': ApiJudgeJudge;
       'api::participant.participant': ApiParticipantParticipant;
       'api::score.score': ApiScoreScore;
+      'api::segment.segment': ApiSegmentSegment;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;
       'plugin::i18n.locale': PluginI18NLocale;
