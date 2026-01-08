@@ -12,13 +12,19 @@
   "pluginOptions": {},
   "attributes": {
     "name": {
-      "type": "string"
+      "type": "string",
+      "required": true
     },
     "order": {
-      "type": "integer"
+      "type": "integer",
+      "required": true,
+      "min": 1
     },
     "weight": {
-      "type": "decimal"
+      "type": "decimal",
+      "required": true,
+      "min": 0,
+      "max": 1
     },
     "segment_status": {
       "type": "enumeration",
@@ -51,6 +57,19 @@
       "relation": "oneToMany",
       "target": "api::participant.participant",
       "mappedBy": "eliminated_at_segment"
+    },
+    "advancement_type": {
+      "type": "enumeration",
+      "default": "all",
+      "enum": [
+        "all",
+        "top_n",
+        "threshold",
+        "manual"
+      ]
+    },
+    "advancement_value": {
+      "type": "integer"
     }
   }
 }

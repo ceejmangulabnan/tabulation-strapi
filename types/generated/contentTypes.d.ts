@@ -631,6 +631,11 @@ export interface ApiSegmentSegment extends Struct.CollectionTypeSchema {
     draftAndPublish: true;
   };
   attributes: {
+    advancement_type: Schema.Attribute.Enumeration<
+      ['all', 'top_n', 'threshold', 'manual']
+    > &
+      Schema.Attribute.DefaultTo<'all'>;
+    advancement_value: Schema.Attribute.Integer;
     categories: Schema.Attribute.Relation<
       'oneToMany',
       'api::category.category'
@@ -649,15 +654,30 @@ export interface ApiSegmentSegment extends Struct.CollectionTypeSchema {
       'api::segment.segment'
     > &
       Schema.Attribute.Private;
-    name: Schema.Attribute.String;
-    order: Schema.Attribute.Integer;
+    name: Schema.Attribute.String & Schema.Attribute.Required;
+    order: Schema.Attribute.Integer &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      >;
     publishedAt: Schema.Attribute.DateTime;
     scores: Schema.Attribute.Relation<'oneToMany', 'api::score.score'>;
     segment_status: Schema.Attribute.Enumeration<['draft', 'active', 'closed']>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    weight: Schema.Attribute.Decimal;
+    weight: Schema.Attribute.Decimal &
+      Schema.Attribute.Required &
+      Schema.Attribute.SetMinMax<
+        {
+          max: 1;
+          min: 0;
+        },
+        number
+      >;
   };
 }
 
