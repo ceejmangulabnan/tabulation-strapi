@@ -665,7 +665,10 @@ export interface ApiSegmentSegment extends Struct.CollectionTypeSchema {
       >;
     publishedAt: Schema.Attribute.DateTime;
     scores: Schema.Attribute.Relation<'oneToMany', 'api::score.score'>;
-    segment_status: Schema.Attribute.Enumeration<['draft', 'active', 'closed']>;
+    segment_status: Schema.Attribute.Enumeration<
+      ['draft', 'inactive', 'active', 'closed']
+    > &
+      Schema.Attribute.DefaultTo<'draft'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;

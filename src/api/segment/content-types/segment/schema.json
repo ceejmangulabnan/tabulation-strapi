@@ -28,8 +28,11 @@
     },
     "segment_status": {
       "type": "enumeration",
+      "required": false,
+      "default": "draft",
       "enum": [
         "draft",
+        "inactive",
         "active",
         "closed"
       ]
