@@ -628,7 +628,7 @@ export interface ApiSegmentSegment extends Struct.CollectionTypeSchema {
     singularName: 'segment';
   };
   options: {
-    draftAndPublish: true;
+    draftAndPublish: false;
   };
   attributes: {
     advancement_type: Schema.Attribute.Enumeration<
