@@ -50,6 +50,25 @@ export default factories.createCoreController(
         return ctx.badRequest(`Event status is already ${event.event_status}`);
       }
 
+      if (!event.segments || event.segments.length === 0) {
+        return ctx.badRequest("Event must have at least one segment");
+      }
+
+      if (!event.participants || event.participants.length === 0) {
+        return ctx.badRequest("Event must have at least one participant");
+      }
+
+      // Initial activation guard for segment status
+      const invalidSegment = event.segments.find(
+        (s) => s.segment_status !== "inactive" && s.segment_status !== "draft",
+      );
+
+      if (invalidSegment) {
+        return ctx.badRequest(
+          "All segments must be draft or inactive before activation",
+        );
+      }
+
       const segmentOrders = event.segments.map((segment) => segment.order);
       if (new Set(segmentOrders).size !== segmentOrders.length) {
         return ctx.badRequest("Segment order values must be unique");
@@ -68,9 +87,16 @@ export default factories.createCoreController(
         (sum, segment) => sum + (segment.weight || 0),
         0,
       );
-      if (totalSegmentWeight !== 1.0) {
+
+      const isOne = (n: number) => Math.abs(n - 1.0) < 0.0001;
+
+      if (!isOne(totalSegmentWeight)) {
         return ctx.badRequest("Total segment weight must be 1.0");
       }
+
+      // if (totalSegmentWeight !== 1.0) {
+      //   return ctx.badRequest("Total segment weight must be 1.0");
+      // }
 
       for (const segment of event.segments) {
         const totalCategoryWeight = segment.categories.reduce(
