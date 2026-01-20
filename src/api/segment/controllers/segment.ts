@@ -24,22 +24,23 @@ export default factories.createCoreController(
     // Create with segment order validation
     async customCreate(ctx) {
       const { data } = ctx.request.body;
-      const { event, segment } = data;
 
       // Validate event segment order field uniqueness
-      const relatedEvent = await strapi.db.query("api::event.event").findOne({
-        where: {
-          id: Number(event),
-        },
+      const relatedEvent = await strapi.documents("api::event.event").findOne({
+        documentId: data.event.documentId,
         populate: { segments: true },
       });
 
-      if (relatedEvent.segments.find((s) => s.order === segment.order)) {
+      if (!relatedEvent) {
+        return ctx.notFound("Event to be linked cannot be found.");
+      }
+
+      if (relatedEvent.segments.find((s) => s.order === data.order)) {
         return ctx.conflict("A segment with this order already exists");
       } else {
         const entity = await strapi
           .service("api::segment.segment")
-          .create({ data: segment });
+          .create({ data });
         const sanitizedEntity = await this.sanitizeOutput(entity, ctx);
 
         ctx.status = 201;
