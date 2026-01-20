@@ -47,5 +47,53 @@ export default factories.createCoreController(
         return this.transformResponse(sanitizedEntity);
       }
     },
+
+    async activateSegment(ctx) {
+      const body = ctx.request.body as {
+        documentId: string;
+        data: {
+          segment_status: "draft" | "inactive" | "active" | "closed";
+        };
+      };
+
+      // Check if event is active
+      const segment = await strapi.documents("api::segment.segment").findOne({
+        documentId: body.documentId,
+        populate: {
+          event: true,
+          categories: true,
+        },
+      });
+
+      if (!segment) {
+        return ctx.notFound("Segment cannot be found.");
+      }
+
+      if (segment.event.event_status !== "active") {
+        return ctx.badRequest(
+          "Event must be active before activating a segment.",
+        );
+      }
+      if (segment.segment_status === "active") {
+        return ctx.badRequest("Segment is already active.");
+      } else if (segment.segment_status === "closed") {
+        return ctx.badRequest(
+          "Segment has already been closed and cannot be reactivated again.",
+        );
+      } else {
+        const activatedSegment = await strapi
+          .documents("api::segment.segment")
+          .update(body);
+
+        const sanitizedOutput = await this.sanitizeOutput(
+          activatedSegment,
+          ctx,
+        );
+
+        return this.transformResponse(sanitizedOutput);
+      }
+    },
+
+    // async deactivateSegment(ctx) {},
   }),
 );

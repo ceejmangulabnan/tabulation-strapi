@@ -10,5 +10,10 @@ export default {
       path: "/segments/create",
       handler: "segment.customCreate",
     },
+    {
+      method: "PUT",
+      path: "/segments/activate",
+      handler: "segment.activateSegment",
+    },
   ],
 };
