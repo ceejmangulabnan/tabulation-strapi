@@ -12,7 +12,11 @@
   "pluginOptions": {},
   "attributes": {
     "value": {
-      "type": "decimal"
+      "type": "decimal",
+      "required": true,
+      "default": 0,
+      "min": 0,
+      "max": 10
     },
     "event": {
       "type": "relation",
