@@ -15,5 +15,10 @@ export default {
       path: "/segments/activate",
       handler: "segment.activateSegment",
     },
+    {
+      method: "POST",
+      path: "/segments/:id/lock",
+      handler: "segment.lockSegment",
+    },
   ],
 };

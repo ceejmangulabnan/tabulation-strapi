@@ -95,5 +95,25 @@ export default factories.createCoreController(
     },
 
     // async deactivateSegment(ctx) {},
+
+    async lockSegment(ctx) {
+      const { id } = ctx.params;
+
+      try {
+        const lockedSegment = await strapi
+          .service("api::segment.segment")
+          .lockSegment(id);
+        const sanitizedOutput = await this.sanitizeOutput(lockedSegment, ctx);
+        return this.transformResponse(sanitizedOutput);
+      } catch (error) {
+        if (error.message.includes("not found")) {
+          return ctx.notFound(error.message);
+        }
+        if (error.message.includes("cannot be locked")) {
+          return ctx.badRequest(error.message);
+        }
+        return ctx.internalServerError("An unexpected error occurred.");
+      }
+    },
   }),
 );
