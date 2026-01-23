@@ -94,8 +94,6 @@ export default factories.createCoreController(
       }
     },
 
-    // async deactivateSegment(ctx) {},
-
     async lockSegment(ctx) {
       const { id } = ctx.params;
 

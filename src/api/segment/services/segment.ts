@@ -1,25 +1,33 @@
-import { factories } from '@strapi/strapi';
+import { factories, Strapi } from "@strapi/strapi";
+import { Schema } from "@strapi/strapi";
+
+type Segment = Schema.Attribute.GetValues<"api::segment.segment">;
 
 export default factories.createCoreService(
   "api::segment.segment",
-  ({ strapi }) => ({
-    async lockSegment(segmentId) {
+  ({ strapi }: { strapi: Strapi }) => ({
+    async lockSegment(segmentId: number) {
       // Fetch the segment with necessary relations
-      const segment = await strapi.documents("api::segment.segment").findOne({
-        documentId: segmentId,
-        populate: {
-          event: { populate: { participants: true } },
-          categories: true,
-          scores: { populate: { participant: true, category: true } },
+      const segment = (await strapi.entityService.findOne(
+        "api::segment.segment",
+        segmentId,
+        {
+          populate: {
+            event: { populate: { participants: true } },
+            categories: true,
+            scores: { populate: { participant: true, category: true } },
+          },
         },
-      });
+      )) as Segment;
 
       if (!segment) {
         throw new Error("Segment not found.");
       }
 
       if (segment.segment_status !== "active") {
-        throw new Error("Segment cannot be locked as it is not in 'active' status.");
+        throw new Error(
+          "Segment cannot be locked as it is not in 'active' status.",
+        );
       }
 
       // Filter active participants only
@@ -35,40 +43,43 @@ export default factories.createCoreService(
       );
 
       // Determine eliminations based on advancement rule
-      const { toEliminate, toAdvance, tieDetected } = this.determineEliminations(
-        participantScores,
-        segment,
-      );
+      const { toEliminate, toAdvance, tieDetected } =
+        this.determineEliminations(participantScores, segment);
 
       // WARNING: The following updates are not atomic and may result in
-      // partial updates if an error occurs. This is a trade-off for
-      // using `strapi.documents()` for type safety.
+      // partial updates if an error occurs.
 
       // Update eliminated participants
       for (const participant of toEliminate) {
-        await strapi.documents("api::participant.participant").update({
-          documentId: participant.id,
-          data: {
-            participant_status: "eliminated",
-            eliminated_at_segment: segmentId,
+        await strapi.entityService.update(
+          "api::participant.participant",
+          participant.id,
+          {
+            data: {
+              participant_status: "eliminated",
+              eliminated_at_segment: segmentId,
+            },
           },
-        });
+        );
       }
 
       // Lock the segment
-      await strapi.documents("api::segment.segment").update({
-        documentId: segmentId,
-        data: { segment_status: "closed" },
-      });
-
+      await strapi.entityService.update(
+        "api::segment.segment",
+        segmentId,
+        {
+          data: { segment_status: "closed" },
+        },
+      );
 
       // TODO: Report ties if tieDetected is true
       console.log("Tie detected:", tieDetected);
 
       // Return the updated segment
-      return await strapi.documents("api::segment.segment").findOne({
-        documentId: segmentId,
-      });
+      return await strapi.entityService.findOne(
+        "api::segment.segment",
+        segmentId,
+      );
     },
 
     calculateSegmentScores(activeParticipants, scores, categories) {
@@ -85,7 +96,9 @@ export default factories.createCoreService(
       for (const score of scores) {
         const participantEntry = participantScoresMap.get(score.participant.id);
         if (participantEntry) {
-          const category = categories.find((cat) => cat.id === score.category.id);
+          const category = categories.find(
+            (cat) => cat.id === score.category.id,
+          );
           if (category) {
             const weightedScore = score.value * category.weight;
             participantEntry.totalScore += weightedScore;
@@ -99,7 +112,7 @@ export default factories.createCoreService(
       );
     },
 
-    determineEliminations(participantScores, segment) {
+    determineEliminations(participantScores, segment: Segment) {
       const toEliminate = [];
       const toAdvance = [];
       let tieDetected = false;
@@ -111,7 +124,9 @@ export default factories.createCoreService(
         case "top_n":
           const N = segment.advancement_value;
           if (N === null || N === undefined) {
-            throw new Error("advancement_value must be set for 'top_n' advancement.");
+            throw new Error(
+              "advancement_value must be set for 'top_n' advancement.",
+            );
           }
 
           if (participantScores.length > N) {
@@ -137,7 +152,9 @@ export default factories.createCoreService(
         case "threshold":
           const threshold = segment.advancement_value;
           if (threshold === null || threshold === undefined) {
-            throw new Error("advancement_value must be set for 'threshold' advancement.");
+            throw new Error(
+              "advancement_value must be set for 'threshold' advancement.",
+            );
           }
 
           let advancedCount = 0;
@@ -150,7 +167,9 @@ export default factories.createCoreService(
             }
           }
           if (advancedCount === 0 && participantScores.length > 0) {
-            throw new Error("Zero participants advanced. Admin confirmation required.");
+            throw new Error(
+              "Zero participants advanced. Admin confirmation required.",
+            );
           }
           break;
         case "manual":
@@ -158,20 +177,23 @@ export default factories.createCoreService(
           toAdvance.push(...participantScores);
           break;
         default:
-          throw new Error(`Unknown advancement type: ${segment.advancement_type}`);
+          throw new Error(
+            `Unknown advancement type: ${segment.advancement_type}`,
+          );
       }
 
-      // This block is redundant and incorrect, as the logic for each
-      // advancement_type should handle eliminations correctly.
-      // if (segment.advancement_type !== "manual" && segment.advancement_type !== "all") {
-      //   const advancedIds = new Set(toAdvance.map((p) => p.id));
-      //   for (const participant of participantScores) {
-      //     if (!advancedIds.has(participant.id)) {
-      //       toEliminate.push(participant);
-      //     }
-      //   }
-      // }
-
+      if (
+        segment.advancement_type !== "manual" &&
+        segment.advancement_type !== "all"
+      ) {
+        const advancedIds = new Set(toAdvance.map((p) => p.id));
+        toEliminate.length = 0; // Clear to avoid duplicates from switch cases
+        for (const participant of participantScores) {
+          if (!advancedIds.has(participant.id)) {
+            toEliminate.push(participant);
+          }
+        }
+      }
 
       return { toEliminate, toAdvance, tieDetected };
     },
