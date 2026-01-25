@@ -72,40 +72,40 @@ function determineEliminations(participantScores, segment) {
   const toAdvance = [];
   let tieDetected = false;
 
-  switch (segment.advancement_type) {
-    case "all":
-      toAdvance.push(...participantScores);
-      break;
-    case "top_n":
-      const N = segment.advancement_value;
+  const processGroup = (groupScores, advancementType, advancementValue) => {
+    const groupToEliminate = [];
+    const groupToAdvance = [];
+    let groupTieDetected = false;
+
+    if (advancementType === "top_n") {
+      const N = advancementValue;
       if (N === null || N === undefined) {
         throw new Error(
           "advancement_value must be set for 'top_n' advancement.",
         );
       }
 
-      if (participantScores.length > N) {
-        const cutoffScore = participantScores[N - 1].totalScore;
+      if (groupScores.length > N) {
+        const cutoffScore = groupScores[N - 1].totalScore;
         let participantsAtCutoff = 0;
-        for (let i = 0; i < participantScores.length; i++) {
-          if (participantScores[i].totalScore >= cutoffScore) {
-            toAdvance.push(participantScores[i]);
-            if (participantScores[i].totalScore === cutoffScore) {
+        for (let i = 0; i < groupScores.length; i++) {
+          if (groupScores[i].totalScore >= cutoffScore) {
+            groupToAdvance.push(groupScores[i]);
+            if (groupScores[i].totalScore === cutoffScore) {
               participantsAtCutoff++;
             }
           } else {
-            toEliminate.push(participantScores[i]);
+            groupToEliminate.push(groupScores[i]);
           }
         }
-        if (participantsAtCutoff > 1 && toAdvance.length > N) {
-          tieDetected = true; // Ties exceed N, requires admin confirmation
+        if (participantsAtCutoff > 1 && groupToAdvance.length > N) {
+          groupTieDetected = true; // Ties exceed N, requires admin confirmation
         }
       } else {
-        toAdvance.push(...participantScores);
+        groupToAdvance.push(...groupScores);
       }
-      break;
-    case "threshold":
-      const threshold = segment.advancement_value;
+    } else if (advancementType === "threshold") {
+      const threshold = advancementValue;
       if (threshold === null || threshold === undefined) {
         throw new Error(
           "advancement_value must be set for 'threshold' advancement.",
@@ -113,25 +113,61 @@ function determineEliminations(participantScores, segment) {
       }
 
       let advancedCount = 0;
-      for (const participant of participantScores) {
+      for (const participant of groupScores) {
         if (participant.totalScore >= threshold) {
-          toAdvance.push(participant);
+          groupToAdvance.push(participant);
           advancedCount++;
         } else {
-          toEliminate.push(participant);
+          groupToEliminate.push(participant);
         }
       }
-      if (advancedCount === 0 && participantScores.length > 0) {
-        throw new Error("Zero participants advanced. Admin confirmation required.");
+      if (advancedCount === 0 && groupScores.length > 0) {
+        throw new Error(
+          "Zero participants advanced in a gender group. Admin confirmation required.",
+        );
       }
-      break;
-    case "manual":
-      // All go to toAdvance, but will require manual selection by admin
-      toAdvance.push(...participantScores);
-      break;
-    default:
-      throw new Error(`Unknown advancement type: ${segment.advancement_type}`);
+    }
+
+    return { groupToEliminate, groupToAdvance, groupTieDetected };
+  };
+
+  if (
+    segment.advancement_type === "top_n" ||
+    segment.advancement_type === "threshold"
+  ) {
+    const maleScores = participantScores.filter((p) => p.gender === "male");
+    const femaleScores = participantScores.filter((p) => p.gender === "female");
+
+    const maleResults = processGroup(
+      maleScores,
+      segment.advancement_type,
+      segment.advancement_value,
+    );
+    toEliminate.push(...maleResults.groupToEliminate);
+    toAdvance.push(...maleResults.groupToAdvance);
+    if (maleResults.groupTieDetected) tieDetected = true;
+
+    const femaleResults = processGroup(
+      femaleScores,
+      segment.advancement_type,
+      segment.advancement_value,
+    );
+    toEliminate.push(...femaleResults.groupToEliminate);
+    toAdvance.push(...femaleResults.groupToAdvance);
+    if (femaleResults.groupTieDetected) tieDetected = true;
+  } else {
+    switch (segment.advancement_type) {
+      case "all":
+        toAdvance.push(...participantScores);
+        break;
+      case "manual":
+        toAdvance.push(...participantScores);
+        break;
+      default:
+        throw new Error(`Unknown advancement type: ${segment.advancement_type}`);
+    }
   }
+
   return { toEliminate, toAdvance, tieDetected };
 }
 
