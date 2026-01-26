@@ -25,7 +25,8 @@
     },
     "active": {
       "type": "boolean",
-      "default": false
+      "required": false,
+      "default": true
     },
     "segment": {
       "type": "relation",
