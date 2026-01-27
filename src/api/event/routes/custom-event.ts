@@ -14,6 +14,15 @@ export default {
         middlewares: [],
       },
     },
+    {
+      method: "GET",
+      path: "/admin/events/:eventId/segments/:segmentId/categories/:categoryId/ranking",
+      handler: "event.getCategoryRank",
+    },
+    {
+      method: "GET",
+      path: "/admin/events/:eventId/segments/:segmentId/ranking",
+      handler: "event.getSegmentRank",
+    },
   ],
 };
-

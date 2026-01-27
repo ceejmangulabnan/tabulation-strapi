@@ -4,6 +4,37 @@
 
 import { factories } from "@strapi/strapi";
 
+type RankingRow = {
+  participant_number: number;
+  name: string;
+  department: string;
+  gender: "male" | "female";
+  averaged_score: number;
+  rank: number;
+};
+
+function denseRank(rows: Omit<RankingRow, "rank">[]): RankingRow[] {
+  let rank = 1;
+  let prevScore: number | null = null;
+
+  return rows.map((row, index) => {
+    if (prevScore !== null && row.averaged_score < prevScore) {
+      rank = index + 1;
+    }
+
+    prevScore = row.averaged_score;
+
+    return { ...row, rank };
+  });
+}
+
+function groupByGender(rows: RankingRow[]) {
+  return {
+    male: rows.filter((r) => r.gender === "male"),
+    female: rows.filter((r) => r.gender === "female"),
+  };
+}
+
 export default factories.createCoreController(
   "api::event.event",
   ({ strapi }) => ({
@@ -125,6 +156,141 @@ export default factories.createCoreController(
 
       const sanitizedOutput = await this.sanitizeOutput(updatedEvent, ctx);
       return this.transformResponse(sanitizedOutput);
+    },
+
+    async getCategoryRank(ctx) {
+      const { eventId, segmentId, categoryId } = ctx.params;
+
+      if (!eventId || !segmentId || !categoryId) {
+        return ctx.badRequest("Missing parameters");
+      }
+
+      // fetch participants
+      const participants = await strapi
+        .documents("api::participant.participant")
+        .findMany({
+          filters: {
+            event: { documentId: eventId },
+            participant_status: "active",
+          },
+          populate: {
+            department: true,
+          },
+        });
+
+      // fetch scores
+      const scores = await strapi.documents("api::score.score").findMany({
+        filters: {
+          event: { documentId: eventId },
+          segment: { documentId: segmentId },
+          category: { documentId: categoryId },
+        },
+        populate: {
+          participant: true,
+        },
+      });
+
+      const rows = participants.map((p) => {
+        const participantScores = scores.filter(
+          (s) => s.participant.documentId === p.documentId,
+        );
+
+        const avg =
+          participantScores.reduce((sum, s) => sum + s.value, 0) /
+          (participantScores.length || 1);
+
+        return {
+          participant_number: p.number,
+          name: p.name,
+          department: p.department?.name ?? "",
+          gender: p.gender,
+          averaged_score: Number(avg.toFixed(4)),
+        };
+      });
+
+      // sort desc
+      rows.sort((a, b) => b.averaged_score - a.averaged_score);
+
+      const ranked = denseRank(rows);
+
+      ctx.body = {
+        results: groupByGender(ranked),
+      };
+    },
+    async getSegmentRank(ctx) {
+      const { eventId, segmentId } = ctx.params;
+
+      if (!eventId || !segmentId) {
+        return ctx.badRequest("Missing parameters");
+      }
+
+      const segment = await strapi.documents("api::segment.segment").findOne({
+        documentId: segmentId,
+        populate: {
+          categories: true,
+        },
+      });
+
+      if (!segment) {
+        return ctx.notFound("Segment not found");
+      }
+
+      const participants = await strapi
+        .documents("api::participant.participant")
+        .findMany({
+          filters: {
+            event: { documentId: eventId },
+            participant_status: "active",
+          },
+          populate: {
+            department: true,
+          },
+        });
+
+      const scores = await strapi.documents("api::score.score").findMany({
+        filters: {
+          event: { documentId: eventId },
+          segment: { documentId: segmentId },
+        },
+        populate: {
+          participant: true,
+          category: true,
+        },
+      });
+
+      const rows = participants.map((p) => {
+        let total = 0;
+
+        for (const category of segment.categories) {
+          const catScores = scores.filter(
+            (s) =>
+              s.participant.documentId === p.documentId &&
+              s.category.documentId === category.documentId,
+          );
+
+          const avg =
+            catScores.reduce((sum, s) => sum + s.value, 0) /
+            (catScores.length || 1);
+
+          total += avg * category.weight;
+        }
+
+        return {
+          participant_number: p.number,
+          name: p.name,
+          department: p.department?.name ?? "",
+          gender: p.gender,
+          averaged_score: Number(total.toFixed(4)),
+        };
+      });
+
+      rows.sort((a, b) => b.averaged_score - a.averaged_score);
+
+      const ranked = denseRank(rows);
+
+      ctx.body = {
+        results: groupByGender(ranked),
+      };
     },
   }),
 );
