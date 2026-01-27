@@ -28,12 +28,7 @@ function denseRank(rows: Omit<RankingRow, "rank">[]): RankingRow[] {
   });
 }
 
-function groupByGender(rows: RankingRow[]) {
-  return {
-    male: rows.filter((r) => r.gender === "male"),
-    female: rows.filter((r) => r.gender === "female"),
-  };
-}
+
 
 export default factories.createCoreController(
   "api::event.event",
@@ -208,13 +203,20 @@ export default factories.createCoreController(
         };
       });
 
-      // sort desc
-      rows.sort((a, b) => b.averaged_score - a.averaged_score);
+      const maleRows = rows.filter((r) => r.gender === "male");
+      const femaleRows = rows.filter((r) => r.gender === "female");
 
-      const ranked = denseRank(rows);
+      maleRows.sort((a, b) => b.averaged_score - a.averaged_score);
+      femaleRows.sort((a, b) => b.averaged_score - a.averaged_score);
+
+      const rankedMale = denseRank(maleRows);
+      const rankedFemale = denseRank(femaleRows);
 
       ctx.body = {
-        results: groupByGender(ranked),
+        results: {
+          male: rankedMale,
+          female: rankedFemale,
+        },
       };
     },
     async getSegmentRank(ctx) {
@@ -284,12 +286,20 @@ export default factories.createCoreController(
         };
       });
 
-      rows.sort((a, b) => b.averaged_score - a.averaged_score);
+      const maleRows = rows.filter((r) => r.gender === "male");
+      const femaleRows = rows.filter((r) => r.gender === "female");
 
-      const ranked = denseRank(rows);
+      maleRows.sort((a, b) => b.averaged_score - a.averaged_score);
+      femaleRows.sort((a, b) => b.averaged_score - a.averaged_score);
+
+      const rankedMale = denseRank(maleRows);
+      const rankedFemale = denseRank(femaleRows);
 
       ctx.body = {
-        results: groupByGender(ranked),
+        results: {
+          male: rankedMale,
+          female: rankedFemale,
+        },
       };
     },
   }),
