@@ -302,5 +302,104 @@ export default factories.createCoreController(
         },
       };
     },
+
+    async getFinalRank(ctx) {
+      const { eventId } = ctx.params;
+
+      if (!eventId) {
+        return ctx.badRequest("Missing eventId");
+      }
+
+      // 1. Fetch event with segments
+      const event = await strapi.documents("api::event.event").findOne({
+        documentId: eventId,
+        populate: {
+          segments: {
+            populate: {
+              categories: true,
+            },
+          },
+        },
+      });
+
+      if (!event) {
+        return ctx.notFound("Event not found");
+      }
+
+      // 2. Fetch participants
+      const participants = await strapi
+        .documents("api::participant.participant")
+        .findMany({
+          filters: {
+            event: { documentId: eventId },
+            participant_status: "active",
+          },
+          populate: {
+            department: true,
+          },
+        });
+
+      // 3. Fetch all scores for the event
+      const scores = await strapi.documents("api::score.score").findMany({
+        filters: {
+          event: { documentId: eventId },
+        },
+        populate: {
+          participant: true,
+          category: true,
+          segment: true,
+        },
+      });
+
+      // 4. Calculate final score for each participant
+      const rows = participants.map((p) => {
+        let finalScore = 0;
+
+        for (const segment of event.segments) {
+          let segmentTotal = 0;
+          for (const category of segment.categories) {
+            const catScores = scores.filter(
+              (s) =>
+                s.participant.documentId === p.documentId &&
+                s.segment.documentId === segment.documentId &&
+                s.category.documentId === category.documentId
+            );
+
+            const avg =
+              catScores.reduce((sum, s) => sum + s.value, 0) /
+              (catScores.length || 1);
+
+            segmentTotal += avg * category.weight;
+          }
+          finalScore += segmentTotal * segment.weight;
+        }
+
+        return {
+          participant_number: p.number,
+          name: p.name,
+          department: p.department?.name ?? "",
+          gender: p.gender,
+          averaged_score: Number(finalScore.toFixed(4)),
+        };
+      });
+
+      // 5. Separate by gender, sort, and rank
+      const maleRows = rows.filter((r) => r.gender === "male");
+      const femaleRows = rows.filter((r) => r.gender === "female");
+
+      maleRows.sort((a, b) => b.averaged_score - a.averaged_score);
+      femaleRows.sort((a, b) => b.averaged_score - a.averaged_score);
+
+      const rankedMale = denseRank(maleRows);
+      const rankedFemale = denseRank(femaleRows);
+
+      // 6. Return response
+      ctx.body = {
+        results: {
+          male: rankedMale,
+          female: rankedFemale,
+        },
+      };
+    },
   }),
 );

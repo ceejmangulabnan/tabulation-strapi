@@ -24,5 +24,10 @@ export default {
       path: "/admin/events/:eventId/segments/:segmentId/ranking",
       handler: "event.getSegmentRank",
     },
+    {
+      method: "GET",
+      path: "/admin/events/:eventId/ranking",
+      handler: "event.getFinalRank",
+    },
   ],
 };
