@@ -73,6 +73,14 @@
     },
     "advancement_value": {
       "type": "integer"
+    },
+    "scoring_mode": {
+      "type": "enumeration",
+      "default": "normalized",
+      "enum": [
+        "normalized",
+        "raw_category"
+      ]
     }
   }
 }

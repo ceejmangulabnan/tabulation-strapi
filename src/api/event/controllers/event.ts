@@ -28,8 +28,6 @@ function denseRank(rows: Omit<RankingRow, "rank">[]): RankingRow[] {
   });
 }
 
-
-
 export default factories.createCoreController(
   "api::event.event",
   ({ strapi }) => ({
@@ -219,6 +217,7 @@ export default factories.createCoreController(
         },
       };
     },
+    // Normalized Get Segment Rank
     async getSegmentRank(ctx) {
       const { eventId, segmentId } = ctx.params;
 
@@ -362,7 +361,7 @@ export default factories.createCoreController(
               (s) =>
                 s.participant.documentId === p.documentId &&
                 s.segment.documentId === segment.documentId &&
-                s.category.documentId === category.documentId
+                s.category.documentId === category.documentId,
             );
 
             const avg =

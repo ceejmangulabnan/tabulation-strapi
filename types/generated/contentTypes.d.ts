@@ -618,13 +618,6 @@ export interface ApiScoreScore extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     value: Schema.Attribute.Decimal &
       Schema.Attribute.Required &
-      Schema.Attribute.SetMinMax<
-        {
-          max: 10;
-          min: 0;
-        },
-        number
-      > &
       Schema.Attribute.DefaultTo<0>;
   };
 }
@@ -674,6 +667,8 @@ export interface ApiSegmentSegment extends Struct.CollectionTypeSchema {
       >;
     publishedAt: Schema.Attribute.DateTime;
     scores: Schema.Attribute.Relation<'oneToMany', 'api::score.score'>;
+    scoring_mode: Schema.Attribute.Enumeration<['normalized', 'raw_category']> &
+      Schema.Attribute.DefaultTo<'normalized'>;
     segment_status: Schema.Attribute.Enumeration<
       ['draft', 'inactive', 'active', 'closed']
     > &
