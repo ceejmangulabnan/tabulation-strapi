@@ -118,10 +118,6 @@ export default factories.createCoreController(
         return ctx.badRequest("Total segment weight must be 1.0");
       }
 
-      // if (totalSegmentWeight !== 1.0) {
-      //   return ctx.badRequest("Total segment weight must be 1.0");
-      // }
-
       for (const segment of event.segments) {
         const totalCategoryWeight = segment.categories.reduce(
           (sum, category) => sum + (category.weight || 0),
@@ -217,7 +213,6 @@ export default factories.createCoreController(
         },
       };
     },
-    // Normalized Get Segment Rank
     async getSegmentRank(ctx) {
       const { eventId, segmentId } = ctx.params;
 
@@ -260,7 +255,7 @@ export default factories.createCoreController(
       });
 
       const rows = participants.map((p) => {
-        let total = 0;
+        let segmentTotal = 0;
 
         for (const category of segment.categories) {
           const catScores = scores.filter(
@@ -269,11 +264,13 @@ export default factories.createCoreController(
               s.category.documentId === category.documentId,
           );
 
-          const avg =
-            catScores.reduce((sum, s) => sum + s.value, 0) /
-            (catScores.length || 1);
+          if (!catScores.length) continue;
 
-          total += avg * category.weight;
+          const avg =
+            catScores.reduce((sum, s) => sum + s.value, 0) / catScores.length;
+
+          // avg is already 0  category.weight * 100
+          segmentTotal += avg;
         }
 
         return {
@@ -281,7 +278,7 @@ export default factories.createCoreController(
           name: p.name,
           department: p.department?.name ?? "",
           gender: p.gender,
-          averaged_score: Number(total.toFixed(4)),
+          averaged_score: Number(segmentTotal.toFixed(3)),
         };
       });
 
@@ -291,13 +288,10 @@ export default factories.createCoreController(
       maleRows.sort((a, b) => b.averaged_score - a.averaged_score);
       femaleRows.sort((a, b) => b.averaged_score - a.averaged_score);
 
-      const rankedMale = denseRank(maleRows);
-      const rankedFemale = denseRank(femaleRows);
-
       ctx.body = {
         results: {
-          male: rankedMale,
-          female: rankedFemale,
+          male: denseRank(maleRows),
+          female: denseRank(femaleRows),
         },
       };
     },
@@ -309,7 +303,6 @@ export default factories.createCoreController(
         return ctx.badRequest("Missing eventId");
       }
 
-      // 1. Fetch event with segments
       const event = await strapi.documents("api::event.event").findOne({
         documentId: eventId,
         populate: {
@@ -325,7 +318,6 @@ export default factories.createCoreController(
         return ctx.notFound("Event not found");
       }
 
-      // 2. Fetch participants
       const participants = await strapi
         .documents("api::participant.participant")
         .findMany({
@@ -338,7 +330,6 @@ export default factories.createCoreController(
           },
         });
 
-      // 3. Fetch all scores for the event
       const scores = await strapi.documents("api::score.score").findMany({
         filters: {
           event: { documentId: eventId },
@@ -350,12 +341,12 @@ export default factories.createCoreController(
         },
       });
 
-      // 4. Calculate final score for each participant
       const rows = participants.map((p) => {
         let finalScore = 0;
 
         for (const segment of event.segments) {
           let segmentTotal = 0;
+
           for (const category of segment.categories) {
             const catScores = scores.filter(
               (s) =>
@@ -364,13 +355,27 @@ export default factories.createCoreController(
                 s.category.documentId === category.documentId,
             );
 
-            const avg =
-              catScores.reduce((sum, s) => sum + s.value, 0) /
-              (catScores.length || 1);
+            if (!catScores.length) continue;
 
-            segmentTotal += avg * category.weight;
+            const avg =
+              catScores.reduce((sum, s) => sum + s.value, 0) / catScores.length;
+
+            // avg already respects category.weight
+            segmentTotal += avg;
           }
-          finalScore += segmentTotal * segment.weight;
+
+          /**
+           * IMPORTANT:
+           * - normalized: segmentTotal already equals segment.weight * 100
+           * - raw_category: categories already add up to segment max
+           * never multiply by segment.weight here
+           */
+          if (segment.scoring_mode === "normalized") {
+            finalScore += segmentTotal * segment.weight;
+          } else {
+            // raw_category
+            finalScore += segmentTotal;
+          }
         }
 
         return {
@@ -378,25 +383,20 @@ export default factories.createCoreController(
           name: p.name,
           department: p.department?.name ?? "",
           gender: p.gender,
-          averaged_score: Number(finalScore.toFixed(4)),
+          averaged_score: Number(finalScore.toFixed(3)),
         };
       });
 
-      // 5. Separate by gender, sort, and rank
       const maleRows = rows.filter((r) => r.gender === "male");
       const femaleRows = rows.filter((r) => r.gender === "female");
 
       maleRows.sort((a, b) => b.averaged_score - a.averaged_score);
       femaleRows.sort((a, b) => b.averaged_score - a.averaged_score);
 
-      const rankedMale = denseRank(maleRows);
-      const rankedFemale = denseRank(femaleRows);
-
-      // 6. Return response
       ctx.body = {
         results: {
-          male: rankedMale,
-          female: rankedFemale,
+          male: denseRank(maleRows),
+          female: denseRank(femaleRows),
         },
       };
     },
