@@ -33,6 +33,12 @@
       "relation": "manyToOne",
       "target": "api::segment.segment",
       "inversedBy": "categories"
+    },
+    "activeJudges": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::judge.judge",
+      "inversedBy": "categories"
     }
   }
 }

@@ -31,6 +31,12 @@
       "relation": "oneToMany",
       "target": "api::score.score",
       "mappedBy": "judge"
+    },
+    "categories": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::category.category",
+      "mappedBy": "activeJudges"
     }
   }
 }
