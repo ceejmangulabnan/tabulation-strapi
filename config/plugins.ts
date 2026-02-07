@@ -5,7 +5,14 @@ export default ({ env }) => ({
         expiresIn: "7d",
       },
       register: {
-        allowedFields: ["username, email, password, userRole"],
+        allowedFields: [
+          "name",
+          "username",
+          "email",
+          "password",
+          "userRole",
+          "eventId",
+        ],
       },
     },
   },
