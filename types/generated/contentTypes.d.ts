@@ -385,7 +385,7 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   };
   attributes: {
     active: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
-    activeJudges: Schema.Attribute.Relation<'manyToMany', 'api::judge.judge'>;
+    active_judges: Schema.Attribute.Relation<'manyToMany', 'api::judge.judge'>;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -395,6 +395,7 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
       'api::category.category'
     > &
       Schema.Attribute.Private;
+    locked: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     name: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     scores: Schema.Attribute.Relation<'oneToMany', 'api::score.score'>;

@@ -34,11 +34,15 @@
       "target": "api::segment.segment",
       "inversedBy": "categories"
     },
-    "activeJudges": {
+    "active_judges": {
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::judge.judge",
       "inversedBy": "categories"
+    },
+    "locked": {
+      "type": "boolean",
+      "default": false
     }
   }
 }
