@@ -386,6 +386,25 @@ export default factories.createCoreController(
         for (const segment of event.segments) {
           let segmentTotal = 0;
 
+          // Cat avg without active_judges
+          // for (const category of segment.categories) {
+          //   const catScores = scores.filter(
+          //     (s) =>
+          //       s.participant.documentId === p.documentId &&
+          //       s.segment.documentId === segment.documentId &&
+          //       s.category.documentId === category.documentId,
+          //   );
+          //
+          //   if (!catScores.length) continue;
+          //
+          //   const avg =
+          //     catScores.reduce((sum, s) => sum + s.value, 0) / catScores.length;
+          //
+          //   // avg already respects category.weight
+          //   segmentTotal += avg;
+          // }
+
+          // With active_judges
           for (const category of segment.categories) {
             const catScores = scores.filter(
               (s) =>
@@ -396,8 +415,18 @@ export default factories.createCoreController(
 
             if (!catScores.length) continue;
 
+            const activeJudgesCount = category.active_judges
+              ? category.active_judges.length
+              : 0;
+
+            if (activeJudgesCount === 0) {
+              // If no active judges, this category contributes 0 to the segment total
+              continue;
+            }
+
             const avg =
-              catScores.reduce((sum, s) => sum + s.value, 0) / catScores.length;
+              catScores.reduce((sum, s) => sum + s.value, 0) /
+              activeJudgesCount;
 
             // avg already respects category.weight
             segmentTotal += avg;
