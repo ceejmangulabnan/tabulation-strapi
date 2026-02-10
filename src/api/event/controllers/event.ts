@@ -167,6 +167,28 @@ export default factories.createCoreController(
           },
         });
 
+      // fetch category to get active judges
+      const category = await strapi
+        .documents("api::category.category")
+        .findOne({
+          documentId: categoryId,
+          populate: {
+            active_judges: true,
+          },
+        });
+
+      if (!category) {
+        return ctx.notFound("Category not found");
+      }
+
+      const activeJudgesCount = category.active_judges
+        ? category.active_judges.length
+        : 0;
+
+      if (activeJudgesCount === 0) {
+        return ctx.badRequest("No active judges found for this category");
+      }
+
       // fetch scores
       const scores = await strapi.documents("api::score.score").findMany({
         filters: {
@@ -186,7 +208,7 @@ export default factories.createCoreController(
 
         const avg =
           participantScores.reduce((sum, s) => sum + s.value, 0) /
-          (participantScores.length || 1);
+          activeJudgesCount;
 
         return {
           participant_number: p.number,
@@ -223,7 +245,11 @@ export default factories.createCoreController(
       const segment = await strapi.documents("api::segment.segment").findOne({
         documentId: segmentId,
         populate: {
-          categories: true,
+          categories: {
+            populate: {
+              active_judges: true,
+            },
+          },
         },
       });
 
@@ -266,8 +292,17 @@ export default factories.createCoreController(
 
           if (!catScores.length) continue;
 
+          const activeJudgesCount = category.active_judges
+            ? category.active_judges.length
+            : 0;
+
+          if (activeJudgesCount === 0) {
+            // If no active judges, this category contributes 0 to the segment total
+            continue;
+          }
+
           const avg =
-            catScores.reduce((sum, s) => sum + s.value, 0) / catScores.length;
+            catScores.reduce((sum, s) => sum + s.value, 0) / activeJudgesCount;
 
           // avg is already 0  category.weight * 100
           segmentTotal += avg;
@@ -308,7 +343,11 @@ export default factories.createCoreController(
         populate: {
           segments: {
             populate: {
-              categories: true,
+              categories: {
+                populate: {
+                  active_judges: true,
+                },
+              },
             },
           },
         },
