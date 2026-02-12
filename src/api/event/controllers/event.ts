@@ -14,7 +14,9 @@ type RankingRow = {
   rank: number;
 };
 
-function denseRank(rows: Omit<RankingRow, "rank">[]): RankingRow[] {
+function denseRank<T extends Omit<RankingRow, "rank">>(
+  rows: T[],
+): (T & { rank: number })[] {
   let rank = 1;
   let prevScore: number | null = null;
 
@@ -611,6 +613,281 @@ export default factories.createCoreController(
         results: {
           male: rankedMale,
           female: rankedFemale,
+        },
+      };
+    },
+
+    async getSegmentScores(ctx) {
+      const { eventId, segmentId } = ctx.params;
+
+      if (!eventId || !segmentId) {
+        return ctx.badRequest("Missing eventId or segmentId");
+      }
+
+      const event = await strapi.documents("api::event.event").findOne({
+        documentId: eventId,
+      });
+
+      if (!event) {
+        return ctx.notFound("Event not found");
+      }
+
+      const segment = await strapi.documents("api::segment.segment").findOne({
+        documentId: segmentId,
+        populate: {
+          categories: {
+            populate: {
+              active_judges: true,
+            },
+          },
+        },
+      });
+
+      if (!segment) {
+        return ctx.notFound("Segment not found");
+      }
+
+      const participants = await strapi
+        .documents("api::participant.participant")
+        .findMany({
+          filters: {
+            event: { documentId: eventId },
+            participant_status: "active",
+          },
+          populate: {
+            department: true,
+            headshot: true,
+          },
+        });
+
+      const scores = await strapi.documents("api::score.score").findMany({
+        filters: {
+          event: { documentId: eventId },
+          segment: { documentId: segmentId },
+        },
+        populate: {
+          participant: true,
+          category: true,
+        },
+      });
+
+      const categories = segment.categories.sort((a, b) =>
+        a.name.localeCompare(b.name),
+      );
+
+      type SegmentScoresRowUnranked = Omit<RankingRow, "rank"> & {
+        headshot: string | null;
+        category_scores: {
+          [key: string]: {
+            averaged_score: number;
+            raw_averaged_score: number;
+          };
+        };
+      };
+
+      const rows: SegmentScoresRowUnranked[] = participants.map((p) => {
+        const category_scores: SegmentScoresRowUnranked["category_scores"] = {};
+        let segmentTotal = 0;
+
+        for (const category of categories) {
+          const catScores = scores.filter(
+            (s) =>
+              s.participant.documentId === p.documentId &&
+              s.category.documentId === category.documentId,
+          );
+
+          const activeJudgesCount = category.active_judges?.length || 0;
+          const categoryAvg =
+            activeJudgesCount > 0
+              ? catScores.reduce((sum, s) => sum + s.value, 0) /
+                activeJudgesCount
+              : 0;
+
+          category_scores[category.name] = {
+            averaged_score: Number(categoryAvg.toFixed(2)),
+            raw_averaged_score: categoryAvg,
+          };
+          segmentTotal += categoryAvg;
+        }
+
+        return {
+          participant_number: p.number,
+          name: p.name,
+          department: p.department?.name ?? "",
+          gender: p.gender,
+          headshot: (p.headshot as any)?.url || null,
+          category_scores,
+          averaged_score: Number(segmentTotal.toFixed(2)),
+          raw_averaged_score: segmentTotal,
+        };
+      });
+
+      const maleRows = rows.filter((r) => r.gender === "male");
+      const femaleRows = rows.filter((r) => r.gender === "female");
+
+      maleRows.sort((a, b) => b.averaged_score - a.averaged_score);
+      femaleRows.sort((a, b) => b.averaged_score - a.averaged_score);
+
+      ctx.body = {
+        event,
+        segment: {
+          documentId: segment.documentId,
+          name: segment.name,
+          order: segment.order,
+          weight: segment.weight,
+        },
+        categories: categories.map((c) => ({
+          documentId: c.documentId,
+          name: c.name,
+          weight: c.weight,
+        })),
+        results: {
+          male: denseRank(maleRows),
+          female: denseRank(femaleRows),
+        },
+      };
+    },
+
+    async getFinalScores(ctx) {
+      const { eventId } = ctx.params;
+
+      if (!eventId) {
+        return ctx.badRequest("Missing eventId");
+      }
+
+      const event = await strapi.documents("api::event.event").findOne({
+        documentId: eventId,
+        populate: {
+          segments: {
+            populate: {
+              categories: {
+                populate: {
+                  active_judges: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!event) {
+        return ctx.notFound("Event not found");
+      }
+
+      const participants = await strapi
+        .documents("api::participant.participant")
+        .findMany({
+          filters: {
+            event: { documentId: eventId },
+            participant_status: "active",
+          },
+          populate: {
+            department: true,
+            headshot: true,
+          },
+        });
+
+      const scores = await strapi.documents("api::score.score").findMany({
+        filters: {
+          event: { documentId: eventId },
+        },
+        populate: {
+          participant: true,
+          category: true,
+          segment: true,
+        },
+      });
+
+      const segments = event.segments.sort((a, b) => a.order - b.order);
+
+      type FinalScoresRowUnranked = Omit<RankingRow, "rank"> & {
+        headshot: string | null;
+        segment_scores: {
+          [key: string]: {
+            averaged_score: number;
+            raw_averaged_score: number;
+          };
+        };
+      };
+
+      const rows: FinalScoresRowUnranked[] = participants.map((p) => {
+        const segment_scores: FinalScoresRowUnranked["segment_scores"] = {};
+        let finalScore = 0;
+
+        for (const segment of segments) {
+          let segmentTotal = 0;
+
+          for (const category of segment.categories) {
+            const catScores = scores.filter(
+              (s) =>
+                s.participant.documentId === p.documentId &&
+                s.segment.documentId === segment.documentId &&
+                s.category.documentId === category.documentId,
+            );
+
+            const activeJudgesCount = category.active_judges?.length || 0;
+            const categoryAvg =
+              activeJudgesCount > 0
+                ? catScores.reduce((sum, s) => sum + s.value, 0) /
+                  activeJudgesCount
+                : 0;
+            segmentTotal += categoryAvg;
+          }
+
+          if (segment.scoring_mode === "normalized") {
+            const normalizedAverage = segmentTotal * segment.weight;
+
+            segment_scores[segment.name] = {
+              averaged_score: Number(normalizedAverage.toFixed(2)),
+              raw_averaged_score: normalizedAverage,
+            };
+          } else {
+            segment_scores[segment.name] = {
+              averaged_score: Number(segmentTotal.toFixed(2)),
+              raw_averaged_score: segmentTotal,
+            };
+          }
+
+          if (segment.scoring_mode === "normalized") {
+            finalScore += segmentTotal * segment.weight;
+          } else {
+            finalScore += segmentTotal;
+          }
+        }
+
+        return {
+          participant_number: p.number,
+          name: p.name,
+          department: p.department?.name ?? "",
+          gender: p.gender,
+          headshot: (p.headshot as any)?.url || null,
+          segment_scores,
+          averaged_score: Number(finalScore.toFixed(2)),
+          raw_averaged_score: finalScore,
+        };
+      });
+
+      const maleRows = rows.filter((r) => r.gender === "male");
+      const femaleRows = rows.filter((r) => r.gender === "female");
+
+      maleRows.sort((a, b) => b.averaged_score - a.averaged_score);
+      femaleRows.sort((a, b) => b.averaged_score - a.averaged_score);
+
+      ctx.body = {
+        event: {
+          documentId: event.documentId,
+          name: event.name,
+          description: event.description,
+        },
+        segments: segments.map((s) => ({
+          documentId: s.documentId,
+          name: s.name,
+          order: s.order,
+          weight: s.weight,
+        })),
+        results: {
+          male: denseRank(maleRows),
+          female: denseRank(femaleRows),
         },
       };
     },
