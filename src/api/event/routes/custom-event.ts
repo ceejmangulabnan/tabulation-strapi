@@ -29,5 +29,10 @@ export default {
       path: "/admin/events/:eventId/ranking",
       handler: "event.getFinalRank",
     },
+    {
+      method: "GET",
+      path: "/admin/events/:eventId/segments/:segmentId/categories/:categoryId/judge-scores",
+      handler: "event.getCategoryScoresPerJudge",
+    },
   ],
 };

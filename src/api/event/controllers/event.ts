@@ -10,6 +10,7 @@ type RankingRow = {
   department: string;
   gender: "male" | "female";
   averaged_score: number;
+  raw_averaged_score: number;
   rank: number;
 };
 
@@ -154,6 +155,11 @@ export default factories.createCoreController(
         return ctx.badRequest("Missing parameters");
       }
 
+      // fetch event
+      const event = await strapi.documents("api::event.event").findOne({
+        documentId: eventId,
+      });
+
       // fetch participants
       const participants = await strapi
         .documents("api::participant.participant")
@@ -215,7 +221,8 @@ export default factories.createCoreController(
           name: p.name,
           department: p.department?.name ?? "",
           gender: p.gender,
-          averaged_score: Number(avg.toFixed(4)),
+          averaged_score: Number(avg.toFixed(2)),
+          raw_averaged_score: Number(avg),
         };
       });
 
@@ -229,6 +236,7 @@ export default factories.createCoreController(
       const rankedFemale = denseRank(femaleRows);
 
       ctx.body = {
+        event,
         results: {
           male: rankedMale,
           female: rankedFemale,
@@ -241,6 +249,10 @@ export default factories.createCoreController(
       if (!eventId || !segmentId) {
         return ctx.badRequest("Missing parameters");
       }
+
+      const event = await strapi.documents("api::event.event").findOne({
+        documentId: eventId,
+      });
 
       const segment = await strapi.documents("api::segment.segment").findOne({
         documentId: segmentId,
@@ -313,7 +325,8 @@ export default factories.createCoreController(
           name: p.name,
           department: p.department?.name ?? "",
           gender: p.gender,
-          averaged_score: Number(segmentTotal.toFixed(3)),
+          averaged_score: Number(segmentTotal.toFixed(2)),
+          raw_averaged_score: Number(segmentTotal),
         };
       });
 
@@ -324,6 +337,7 @@ export default factories.createCoreController(
       femaleRows.sort((a, b) => b.averaged_score - a.averaged_score);
 
       ctx.body = {
+        event,
         results: {
           male: denseRank(maleRows),
           female: denseRank(femaleRows),
@@ -451,7 +465,8 @@ export default factories.createCoreController(
           name: p.name,
           department: p.department?.name ?? "",
           gender: p.gender,
-          averaged_score: Number(finalScore.toFixed(3)),
+          averaged_score: Number(finalScore.toFixed(2)),
+          raw_averaged_score: Number(finalScore),
         };
       });
 
@@ -462,9 +477,140 @@ export default factories.createCoreController(
       femaleRows.sort((a, b) => b.averaged_score - a.averaged_score);
 
       ctx.body = {
+        event,
         results: {
           male: denseRank(maleRows),
           female: denseRank(femaleRows),
+        },
+      };
+    },
+
+    async getCategoryScoresPerJudge(ctx) {
+      const { eventId, segmentId, categoryId } = ctx.params;
+
+      if (!eventId || !segmentId || !categoryId) {
+        return ctx.badRequest("Missing parameters");
+      }
+
+      // fetch event
+      const event = await strapi.documents("api::event.event").findOne({
+        documentId: eventId,
+      });
+
+      if (!event) {
+        return ctx.notFound("Event not found");
+      }
+
+      // fetch participants
+      const participants = await strapi
+        .documents("api::participant.participant")
+        .findMany({
+          filters: {
+            event: { documentId: eventId },
+            participant_status: "active",
+          },
+          populate: {
+            department: true,
+            headshot: true, // Assuming 'headshot' is a media field that needs populating
+          },
+        });
+
+      // fetch category to get active judges
+      const category = await strapi
+        .documents("api::category.category")
+        .findOne({
+          documentId: categoryId,
+          populate: {
+            active_judges: true,
+          },
+        });
+
+      if (!category) {
+        return ctx.notFound("Category not found");
+      }
+
+      const activeJudges = category.active_judges
+        ? ((category.active_judges as any[]).sort((a, b) =>
+            a.name.localeCompare(b.name),
+          ) as Array<{ documentId: string; name: string }>)
+        : [];
+
+      const activeJudgesCount = activeJudges.length;
+
+      if (activeJudgesCount === 0) {
+        return ctx.badRequest("No active judges found for this category");
+      }
+
+      // fetch scores
+      const scores = await strapi.documents("api::score.score").findMany({
+        filters: {
+          event: { documentId: eventId },
+          segment: { documentId: segmentId },
+          category: { documentId: categoryId },
+        },
+        populate: {
+          participant: true,
+          judge: true,
+        },
+      });
+
+      type ExtendedRankingRow = RankingRow & {
+        headshot: string | null;
+        [key: `judge_${string}`]: number | null | undefined;
+      };
+
+      const rows: ExtendedRankingRow[] = participants.map((p) => {
+        const participantData: Partial<ExtendedRankingRow> = {
+          participant_number: p.number,
+          name: p.name,
+          department: p.department?.name ?? "",
+          gender: p.gender,
+          headshot: (p.headshot as any)?.url || null, // Assuming headshot is a media object
+        };
+
+        let sumOfScoresForAllActiveJudges = 0;
+        for (const judge of activeJudges) {
+          const score = scores.find(
+            (s) =>
+              s.participant.documentId === p.documentId &&
+              (s.judge as any).documentId === judge.documentId,
+          );
+          const judgeScoreValue = score ? score.value : 0; // For averaging, treat missing score as 0
+          participantData[`judge_${judge.name.replace(/\s/g, "_")}`] =
+            score?.value ?? null; // For display, show null if no score
+
+          sumOfScoresForAllActiveJudges += judgeScoreValue;
+        }
+
+        const raw_averaged_score =
+          activeJudgesCount > 0
+            ? Number(sumOfScoresForAllActiveJudges / activeJudgesCount)
+            : 0;
+
+        participantData.averaged_score = Number(raw_averaged_score.toFixed(2));
+        participantData.raw_averaged_score = Number(raw_averaged_score);
+
+        return participantData as ExtendedRankingRow;
+      });
+
+      const maleRows = rows.filter((r) => r.gender === "male");
+      const femaleRows = rows.filter((r) => r.gender === "female");
+
+      maleRows.sort((a, b) => b.averaged_score - a.averaged_score);
+      femaleRows.sort((a, b) => b.averaged_score - a.averaged_score);
+
+      const rankedMale = denseRank(maleRows); // denseRank expects Omit<RankingRow, "rank">[], but given the fields, it should still work.
+      const rankedFemale = denseRank(femaleRows); // The extra fields will be carried over by the spread in denseRank
+
+      ctx.body = {
+        event,
+        activeJudges: activeJudges.map((j) => ({
+          documentId: j.documentId,
+          name: j.name,
+        })),
+        results: {
+          male: rankedMale,
+          female: rankedFemale,
         },
       };
     },
