@@ -443,24 +443,6 @@ export default factories.createCoreController(
         for (const segment of event.segments) {
           let segmentTotal = 0;
 
-          // Cat avg without active_judges
-          // for (const category of segment.categories) {
-          //   const catScores = scores.filter(
-          //     (s) =>
-          //       s.participant.documentId === p.documentId &&
-          //       s.segment.documentId === segment.documentId &&
-          //       s.category.documentId === category.documentId,
-          //   );
-          //
-          //   if (!catScores.length) continue;
-          //
-          //   const avg =
-          //     catScores.reduce((sum, s) => sum + s.value, 0) / catScores.length;
-          //
-          //   // avg already respects category.weight
-          //   segmentTotal += avg;
-          // }
-
           // With active_judges
           for (const category of segment.categories) {
             const activeJudges = (category.active_judges || []) as Array<{
@@ -561,7 +543,7 @@ export default factories.createCoreController(
         .findMany({
           filters: {
             event: { documentId: eventId },
-            participant_status: "active",
+            // participant_status: "active",
           },
           populate: {
             department: true,
@@ -610,17 +592,19 @@ export default factories.createCoreController(
       });
 
       type ExtendedRankingRow = RankingRow & {
+        isEliminated: boolean;
         headshot: string | null;
         [key: `judge_${string}`]: number | null | undefined;
       };
 
       const rows: ExtendedRankingRow[] = participants.map((p) => {
         const participantData: Partial<ExtendedRankingRow> = {
+          isEliminated: p.participant_status === "eliminated",
           participant_number: p.number,
           name: p.name,
           department: p.department?.name ?? "",
           gender: p.gender,
-          headshot: (p.headshot as any)?.url || null, // Assuming headshot is a media object
+          headshot: (p.headshot as any)?.url || null,
         };
 
         let sumOfScoresForAllActiveJudges = 0;
@@ -709,7 +693,7 @@ export default factories.createCoreController(
         .findMany({
           filters: {
             event: { documentId: eventId },
-            participant_status: "active",
+            // participant_status: "active",
           },
           populate: {
             department: true,
@@ -718,9 +702,9 @@ export default factories.createCoreController(
           },
         });
 
-      const filteredParticipants = participants.filter(
-        (p) => !p.eliminated_at_segment,
-      );
+      // const filteredParticipants = participants.filter(
+      //   (p) => !p.eliminated_at_segment,
+      // );
 
       const scores = await strapi.documents("api::score.score").findMany({
         filters: {
@@ -748,7 +732,7 @@ export default factories.createCoreController(
         };
       };
 
-      const rows: SegmentScoresRowUnranked[] = filteredParticipants.map((p) => {
+      const rows: SegmentScoresRowUnranked[] = participants.map((p) => {
         const category_scores: SegmentScoresRowUnranked["category_scores"] = {};
         let segmentTotal = 0;
 
@@ -781,6 +765,7 @@ export default factories.createCoreController(
         }
 
         return {
+          isEliminated: p.participant_status === "eliminated",
           participant_number: p.number,
           name: p.name,
           department: p.department?.name ?? "",
@@ -853,7 +838,7 @@ export default factories.createCoreController(
         .findMany({
           filters: {
             event: { documentId: eventId },
-            participant_status: "active",
+            // participant_status: "active",
           },
           populate: {
             department: true,
@@ -862,9 +847,9 @@ export default factories.createCoreController(
           },
         });
 
-      const filteredParticipants = participants.filter(
-        (p) => !p.eliminated_at_segment,
-      );
+      // const filteredParticipants = participants.filter(
+      //   (p) => !p.eliminated_at_segment,
+      // );
 
       const scores = await strapi.documents("api::score.score").findMany({
         filters: {
@@ -890,7 +875,7 @@ export default factories.createCoreController(
         };
       };
 
-      const rows: FinalScoresRowUnranked[] = filteredParticipants.map((p) => {
+      const rows: FinalScoresRowUnranked[] = participants.map((p) => {
         const segment_scores: FinalScoresRowUnranked["segment_scores"] = {};
         let finalScore = 0;
 
@@ -946,6 +931,7 @@ export default factories.createCoreController(
         }
 
         return {
+          isEliminated: p.participant_status === "eliminated",
           participant_number: p.number,
           name: p.name,
           department: p.department?.name ?? "",
