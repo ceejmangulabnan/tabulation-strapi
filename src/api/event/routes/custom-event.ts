@@ -44,5 +44,10 @@ export default {
       path: "/admin/events/:eventId/scores",
       handler: "event.getFinalScores",
     },
+    {
+      method: "GET",
+      path: "/judge/events/:eventId/scores",
+      handler: "event.getFinalScoresForJudge",
+    },
   ],
 };
