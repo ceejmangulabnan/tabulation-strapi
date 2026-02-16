@@ -56,6 +56,10 @@ export default factories.createCoreController(
         return ctx.badRequest("Category does not belong to this segment.");
       }
 
+      if (category.locked) {
+        return ctx.badRequest("Category is already locked for scoring.");
+      }
+
       let maxScore: number;
 
       switch (segment.scoring_mode) {
@@ -171,6 +175,10 @@ export default factories.createCoreController(
 
       if (!category) {
         return ctx.badRequest("Category does not belong to this segment.");
+      }
+
+      if (category.locked) {
+        return ctx.badRequest("Category is already locked for scoring.");
       }
 
       let maxScore: number;
