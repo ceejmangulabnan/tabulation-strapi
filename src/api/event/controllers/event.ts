@@ -237,6 +237,8 @@ export default factories.createCoreController(
           activeJudgesCount;
 
         return {
+          eliminated_at_segment: p.eliminated_at_segment,
+          isEliminated: p.participant_status === "eliminated",
           participant_number: p.number,
           name: p.name,
           department: p.department?.name ?? "",
@@ -548,6 +550,7 @@ export default factories.createCoreController(
           populate: {
             department: true,
             headshot: true, // Assuming 'headshot' is a media field that needs populating
+            eliminated_at_segment: true,
           },
         });
 
@@ -592,6 +595,7 @@ export default factories.createCoreController(
       });
 
       type ExtendedRankingRow = RankingRow & {
+        eliminated_at_segment: any;
         isEliminated: boolean;
         headshot: string | null;
         [key: `judge_${string}`]: number | null | undefined;
@@ -599,6 +603,7 @@ export default factories.createCoreController(
 
       const rows: ExtendedRankingRow[] = participants.map((p) => {
         const participantData: Partial<ExtendedRankingRow> = {
+          eliminated_at_segment: p.eliminated_at_segment,
           isEliminated: p.participant_status === "eliminated",
           participant_number: p.number,
           name: p.name,
@@ -765,6 +770,7 @@ export default factories.createCoreController(
         }
 
         return {
+          eliminated_at_segment: p.eliminated_at_segment,
           isEliminated: p.participant_status === "eliminated",
           participant_number: p.number,
           name: p.name,
