@@ -1,4 +1,4 @@
-export default [
+const config: any = [
   'strapi::logger',
   'strapi::errors',
   'strapi::security',
@@ -10,3 +10,5 @@ export default [
   'strapi::favicon',
   'strapi::public',
 ];
+
+export default config;
