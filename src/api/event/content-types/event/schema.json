@@ -60,6 +60,14 @@
       "relation": "oneToMany",
       "target": "api::segment.segment",
       "mappedBy": "event"
-    }
+    },
+    "final_scoring_mode": {
+      "type": "enumeration",
+      "default": "combine_all",
+      "enum": [
+        "combine_all",
+        "last_segment_only"
+      ]
+    },
   }
 }

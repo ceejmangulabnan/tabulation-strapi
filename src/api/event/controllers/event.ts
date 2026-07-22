@@ -20,13 +20,14 @@ function denseRank<T extends Omit<RankingRow, "rank">>(
   let rank = 1;
   let prevScore: number | null = null;
 
-  return rows.map((row, index) => {
+  return rows.map((row) => {
     if (prevScore !== null && row.averaged_score < prevScore) {
-      rank = index + 1;
+      rank++;
     }
 
     prevScore = row.averaged_score;
 
+    console.log({ Row: row, Rank: rank });
     return { ...row, rank };
   });
 }
@@ -110,18 +111,27 @@ export default factories.createCoreController(
         );
       }
 
-      const totalSegmentWeight = event.segments.reduce(
-        (sum, segment) => sum + (segment.weight || 0),
-        0,
-      );
+      const finalScoringMode =
+        (event as any).final_scoring_mode || "combine_all";
 
-      const isOne = (n: number) => Math.abs(n - 1.0) < 0.0001;
+      if (finalScoringMode === "combine_all") {
+        const totalSegmentWeight = event.segments.reduce(
+          (sum, segment) => sum + (segment.weight || 0),
+          0,
+        );
 
-      if (!isOne(totalSegmentWeight)) {
-        return ctx.badRequest("Total segment weight must be 1.0");
+        const isOne = (n: number) => Math.abs(n - 1.0) < 0.0001;
+
+        if (!isOne(totalSegmentWeight)) {
+          return ctx.badRequest("Total segment weight must be 1.0");
+        }
       }
 
       for (const segment of event.segments) {
+        if (segment.scoring_mode === "ranking") {
+          continue;
+        }
+
         const totalCategoryWeight = segment.categories.reduce(
           (sum, category) => sum + (category.weight || 0),
           0,
@@ -269,6 +279,7 @@ export default factories.createCoreController(
         },
       };
     },
+
     async getSegmentRank(ctx) {
       const { eventId, segmentId } = ctx.params;
 
@@ -326,6 +337,7 @@ export default factories.createCoreController(
 
       const rows = filteredParticipants.map((p) => {
         let segmentTotal = 0;
+        let avg = 0;
 
         for (const category of segment.categories) {
           const activeJudges = (category.active_judges || []) as Array<{
@@ -349,10 +361,20 @@ export default factories.createCoreController(
 
           if (!catScores.length) continue;
 
-          const avg =
-            catScores.reduce((sum, s) => sum + s.value, 0) / activeJudgesCount;
-          // avg is already 0  category.weight * 100
-          segmentTotal += avg;
+          // Handle ranking scoring_mode
+          if (segment.scoring_mode === "ranking") {
+            avg =
+              catScores.reduce((sum, s) => sum + s.value, 0) /
+              activeJudgesCount;
+            // ( Active Participants + 1 ) - avg
+            const invertedRank = filteredParticipants.length + 1 - avg;
+            segmentTotal += invertedRank;
+          } else {
+            avg =
+              catScores.reduce((sum, s) => sum + s.value, 0) /
+              activeJudgesCount;
+            segmentTotal += avg;
+          }
         }
 
         return {
@@ -427,6 +449,9 @@ export default factories.createCoreController(
         (p) => !p.eliminated_at_segment,
       );
 
+      const participantCount = filteredParticipants.length;
+      const rankMultiplier = participantCount + 1;
+
       const scores = await strapi.documents("api::score.score").findMany({
         filters: {
           event: { documentId: eventId },
@@ -439,18 +464,28 @@ export default factories.createCoreController(
         },
       });
 
-      const participantCount = filteredParticipants.length;
-      const rankMultiplier = participantCount + 1;
+      const sortedSegments = [...event.segments].sort(
+        (a, b) => a.order - b.order,
+      );
+
+      const finalScoringMode =
+        (event as any).final_scoring_mode || "combine_all";
 
       const rows = filteredParticipants.map((p) => {
         let finalScore = 0;
         let rankingScore = 0;
         let hasRankingSegment = false;
 
-        for (const segment of event.segments) {
+        const segmentsToProcess =
+          finalScoringMode === "last_segment_only"
+            ? [sortedSegments[sortedSegments.length - 1]]
+            : sortedSegments;
+
+        for (const segment of segmentsToProcess) {
+          if (!segment) continue;
+
           let segmentTotal = 0;
 
-          // With active_judges
           for (const category of segment.categories) {
             const activeJudges = (category.active_judges || []) as Array<{
               documentId: string;
@@ -459,7 +494,6 @@ export default factories.createCoreController(
             const activeJudgesCount = activeJudgeIds.length;
 
             if (activeJudgesCount === 0) {
-              // If no active judges, this category contributes 0 to the segment total
               continue;
             }
 
@@ -481,8 +515,11 @@ export default factories.createCoreController(
               catScores.reduce((sum, s) => sum + s.value, 0) /
               activeJudgesCount;
 
-            // avg already respects category.weight
-            segmentTotal += avg;
+            if (segment.scoring_mode === "ranking") {
+              segmentTotal += participantCount + 1 - avg;
+            } else {
+              segmentTotal += avg;
+            }
           }
 
           if (segment.scoring_mode === "normalized") {
@@ -497,7 +534,7 @@ export default factories.createCoreController(
         }
 
         const sortScore = hasRankingSegment
-          ? finalScore * rankMultiplier - rankingScore
+          ? finalScore * rankMultiplier + rankingScore
           : finalScore;
 
         return {
@@ -507,7 +544,9 @@ export default factories.createCoreController(
           gender: p.gender,
           averaged_score: Number(sortScore.toFixed(4)),
           raw_averaged_score: Number(finalScore),
-          ...(hasRankingSegment ? { ranking_score: Number(rankingScore.toFixed(2)) } : {}),
+          ...(hasRankingSegment
+            ? { ranking_score: Number(rankingScore.toFixed(2)) }
+            : {}),
         };
       });
 
@@ -714,9 +753,9 @@ export default factories.createCoreController(
           },
         });
 
-      // const filteredParticipants = participants.filter(
-      //   (p) => !p.eliminated_at_segment,
-      // );
+      const activeParticipants = participants.filter(
+        (p) => p.participant_status === "active" && !p.eliminated_at_segment,
+      );
 
       const scores = await strapi.documents("api::score.score").findMany({
         filters: {
@@ -747,6 +786,7 @@ export default factories.createCoreController(
       const rows: SegmentScoresRowUnranked[] = participants.map((p) => {
         const category_scores: SegmentScoresRowUnranked["category_scores"] = {};
         let segmentTotal = 0;
+        let categoryAvg = 0;
 
         for (const category of categories) {
           const activeJudges = (category.active_judges || []) as Array<{
@@ -763,11 +803,21 @@ export default factories.createCoreController(
               activeJudgeIds.includes(s.judge.documentId),
           );
 
-          const categoryAvg =
-            activeJudgesCount > 0
-              ? catScores.reduce((sum, s) => sum + s.value, 0) /
-                activeJudgesCount
-              : 0;
+          if (segment.scoring_mode === "ranking") {
+            const avg =
+              activeJudgesCount > 0
+                ? catScores.reduce((sum, s) => sum + s.value, 0) /
+                  activeJudgesCount
+                : 0;
+
+            categoryAvg = activeParticipants.length + 1 - avg;
+          } else {
+            categoryAvg =
+              activeJudgesCount > 0
+                ? catScores.reduce((sum, s) => sum + s.value, 0) /
+                  activeJudgesCount
+                : 0;
+          }
 
           category_scores[category.name] = {
             averaged_score: Number(categoryAvg.toFixed(2)),
@@ -851,7 +901,6 @@ export default factories.createCoreController(
         .findMany({
           filters: {
             event: { documentId: eventId },
-            // participant_status: "active",
           },
           populate: {
             department: true,
@@ -860,9 +909,12 @@ export default factories.createCoreController(
           },
         });
 
-      // const filteredParticipants = participants.filter(
-      //   (p) => !p.eliminated_at_segment,
-      // );
+      const activeParticipants = participants.filter(
+        (p) => p.participant_status === "active" && !p.eliminated_at_segment,
+      );
+
+      const participantCount = activeParticipants.length;
+      const rankMultiplier = participantCount + 1;
 
       const scores = await strapi.documents("api::score.score").findMany({
         filters: {
@@ -876,7 +928,12 @@ export default factories.createCoreController(
         },
       });
 
-      const segments = event.segments.sort((a, b) => a.order - b.order);
+      const sortedSegments = [...event.segments].sort(
+        (a, b) => a.order - b.order,
+      );
+
+      const finalScoringMode =
+        (event as any).final_scoring_mode || "combine_all";
 
       type FinalScoresRowUnranked = Omit<RankingRow, "rank"> & {
         headshot: string | null;
@@ -894,7 +951,14 @@ export default factories.createCoreController(
         let rankingScore = 0;
         let hasRankingSegment = false;
 
-        for (const segment of segments) {
+        const segmentsToProcess =
+          finalScoringMode === "last_segment_only"
+            ? [sortedSegments[sortedSegments.length - 1]]
+            : sortedSegments;
+
+        for (const segment of segmentsToProcess) {
+          if (!segment) continue;
+
           let segmentTotal = 0;
 
           for (const category of segment.categories) {
@@ -916,12 +980,21 @@ export default factories.createCoreController(
                 activeJudgeIds.includes(s.judge.documentId),
             );
 
-            const categoryAvg =
-              activeJudgesCount > 0
-                ? catScores.reduce((sum, s) => sum + s.value, 0) /
-                  activeJudgesCount
-                : 0;
-            segmentTotal += categoryAvg;
+            if (segment.scoring_mode === "ranking") {
+              const categoryAvg =
+                activeJudgesCount > 0
+                  ? catScores.reduce((sum, s) => sum + s.value, 0) /
+                    activeJudgesCount
+                  : 0;
+              segmentTotal += participantCount + 1 - categoryAvg;
+            } else {
+              const categoryAvg =
+                activeJudgesCount > 0
+                  ? catScores.reduce((sum, s) => sum + s.value, 0) /
+                    activeJudgesCount
+                  : 0;
+              segmentTotal += categoryAvg;
+            }
           }
 
           if (segment.scoring_mode === "normalized") {
@@ -952,6 +1025,12 @@ export default factories.createCoreController(
           }
         }
 
+        const sortScore = hasRankingSegment
+          ? Number(
+              (finalScore * rankMultiplier + rankingScore).toFixed(4),
+            )
+          : Number(finalScore.toFixed(2));
+
         return {
           isEliminated: p.participant_status === "eliminated",
           participant_number: p.number,
@@ -960,11 +1039,11 @@ export default factories.createCoreController(
           gender: p.gender,
           headshot: (p.headshot as any)?.url || null,
           segment_scores,
-          averaged_score: hasRankingSegment
-            ? Number((finalScore * (participants.length + 1) - rankingScore).toFixed(4))
-            : Number(finalScore.toFixed(2)),
+          averaged_score: sortScore,
           raw_averaged_score: finalScore,
-          ...(hasRankingSegment ? { ranking_score: Number(rankingScore.toFixed(2)) } : {}),
+          ...(hasRankingSegment
+            ? { ranking_score: Number(rankingScore.toFixed(2)) }
+            : {}),
         };
       });
 
@@ -980,7 +1059,7 @@ export default factories.createCoreController(
           name: event.name,
           description: event.description,
         },
-        segments: segments.map((s) => ({
+        segments: sortedSegments.map((s) => ({
           documentId: s.documentId,
           name: s.name,
           order: s.order,
@@ -1025,7 +1104,6 @@ export default factories.createCoreController(
         .findMany({
           filters: {
             event: { documentId: eventId },
-            // participant_status: "active",
           },
           populate: {
             department: true,
@@ -1034,9 +1112,12 @@ export default factories.createCoreController(
           },
         });
 
-      // const filteredParticipants = participants.filter(
-      //   (p) => !p.eliminated_at_segment,
-      // );
+      const activeParticipants = participants.filter(
+        (p) => p.participant_status === "active" && !p.eliminated_at_segment,
+      );
+
+      const participantCount = activeParticipants.length;
+      const rankMultiplier = participantCount + 1;
 
       const scores = await strapi.documents("api::score.score").findMany({
         filters: {
@@ -1050,7 +1131,12 @@ export default factories.createCoreController(
         },
       });
 
-      const segments = event.segments.sort((a, b) => a.order - b.order);
+      const sortedSegments = [...event.segments].sort(
+        (a, b) => a.order - b.order,
+      );
+
+      const finalScoringMode =
+        (event as any).final_scoring_mode || "combine_all";
 
       type FinalScoresRowUnranked = Omit<RankingRow, "rank"> & {
         headshot: string | null;
@@ -1068,7 +1154,14 @@ export default factories.createCoreController(
         let rankingScore = 0;
         let hasRankingSegment = false;
 
-        for (const segment of segments) {
+        const segmentsToProcess =
+          finalScoringMode === "last_segment_only"
+            ? [sortedSegments[sortedSegments.length - 1]]
+            : sortedSegments;
+
+        for (const segment of segmentsToProcess) {
+          if (!segment) continue;
+
           let segmentTotal = 0;
 
           for (const category of segment.categories) {
@@ -1090,12 +1183,21 @@ export default factories.createCoreController(
                 activeJudgeIds.includes(s.judge.documentId),
             );
 
-            const categoryAvg =
-              activeJudgesCount > 0
-                ? catScores.reduce((sum, s) => sum + s.value, 0) /
-                  activeJudgesCount
-                : 0;
-            segmentTotal += categoryAvg;
+            if (segment.scoring_mode === "ranking") {
+              const categoryAvg =
+                activeJudgesCount > 0
+                  ? catScores.reduce((sum, s) => sum + s.value, 0) /
+                    activeJudgesCount
+                  : 0;
+              segmentTotal += participantCount + 1 - categoryAvg;
+            } else {
+              const categoryAvg =
+                activeJudgesCount > 0
+                  ? catScores.reduce((sum, s) => sum + s.value, 0) /
+                    activeJudgesCount
+                  : 0;
+              segmentTotal += categoryAvg;
+            }
           }
 
           if (segment.scoring_mode === "normalized") {
@@ -1126,6 +1228,12 @@ export default factories.createCoreController(
           }
         }
 
+        const sortScore = hasRankingSegment
+          ? Number(
+              (finalScore * rankMultiplier + rankingScore).toFixed(4),
+            )
+          : Number(finalScore.toFixed(2));
+
         return {
           isEliminated: p.participant_status === "eliminated",
           participant_number: p.number,
@@ -1134,11 +1242,11 @@ export default factories.createCoreController(
           gender: p.gender,
           headshot: (p.headshot as any)?.url || null,
           segment_scores,
-          averaged_score: hasRankingSegment
-            ? Number((finalScore * (participants.length + 1) - rankingScore).toFixed(4))
-            : Number(finalScore.toFixed(2)),
+          averaged_score: sortScore,
           raw_averaged_score: finalScore,
-          ...(hasRankingSegment ? { ranking_score: Number(rankingScore.toFixed(2)) } : {}),
+          ...(hasRankingSegment
+            ? { ranking_score: Number(rankingScore.toFixed(2)) }
+            : {}),
         };
       });
 
@@ -1154,7 +1262,7 @@ export default factories.createCoreController(
           name: event.name,
           description: event.description,
         },
-        segments: segments.map((s) => ({
+        segments: sortedSegments.map((s) => ({
           documentId: s.documentId,
           name: s.name,
           order: s.order,
