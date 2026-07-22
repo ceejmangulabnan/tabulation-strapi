@@ -803,20 +803,20 @@ export default factories.createCoreController(
               activeJudgeIds.includes(s.judge.documentId),
           );
 
-          if (segment.scoring_mode === "ranking") {
-            const avg =
-              activeJudgesCount > 0
-                ? catScores.reduce((sum, s) => sum + s.value, 0) /
-                  activeJudgesCount
-                : 0;
+          const rawAvg =
+            activeJudgesCount > 0
+              ? catScores.reduce((sum, s) => sum + s.value, 0) /
+                activeJudgesCount
+              : 0;
 
-            categoryAvg = activeParticipants.length + 1 - avg;
+          if (
+            segment.scoring_mode === "ranking" &&
+            p.participant_status === "active" &&
+            !p.eliminated_at_segment
+          ) {
+            categoryAvg = activeParticipants.length + 1 - rawAvg;
           } else {
-            categoryAvg =
-              activeJudgesCount > 0
-                ? catScores.reduce((sum, s) => sum + s.value, 0) /
-                  activeJudgesCount
-                : 0;
+            categoryAvg = rawAvg;
           }
 
           category_scores[category.name] = {
@@ -980,20 +980,20 @@ export default factories.createCoreController(
                 activeJudgeIds.includes(s.judge.documentId),
             );
 
-            if (segment.scoring_mode === "ranking") {
-              const categoryAvg =
-                activeJudgesCount > 0
-                  ? catScores.reduce((sum, s) => sum + s.value, 0) /
-                    activeJudgesCount
-                  : 0;
-              segmentTotal += participantCount + 1 - categoryAvg;
+            const rawAvg =
+              activeJudgesCount > 0
+                ? catScores.reduce((sum, s) => sum + s.value, 0) /
+                  activeJudgesCount
+                : 0;
+
+            if (
+              segment.scoring_mode === "ranking" &&
+              p.participant_status === "active" &&
+              !p.eliminated_at_segment
+            ) {
+              segmentTotal += participantCount + 1 - rawAvg;
             } else {
-              const categoryAvg =
-                activeJudgesCount > 0
-                  ? catScores.reduce((sum, s) => sum + s.value, 0) /
-                    activeJudgesCount
-                  : 0;
-              segmentTotal += categoryAvg;
+              segmentTotal += rawAvg;
             }
           }
 
@@ -1183,20 +1183,20 @@ export default factories.createCoreController(
                 activeJudgeIds.includes(s.judge.documentId),
             );
 
-            if (segment.scoring_mode === "ranking") {
-              const categoryAvg =
-                activeJudgesCount > 0
-                  ? catScores.reduce((sum, s) => sum + s.value, 0) /
-                    activeJudgesCount
-                  : 0;
-              segmentTotal += participantCount + 1 - categoryAvg;
+            const rawAvg =
+              activeJudgesCount > 0
+                ? catScores.reduce((sum, s) => sum + s.value, 0) /
+                  activeJudgesCount
+                : 0;
+
+            if (
+              segment.scoring_mode === "ranking" &&
+              p.participant_status === "active" &&
+              !p.eliminated_at_segment
+            ) {
+              segmentTotal += participantCount + 1 - rawAvg;
             } else {
-              const categoryAvg =
-                activeJudgesCount > 0
-                  ? catScores.reduce((sum, s) => sum + s.value, 0) /
-                    activeJudgesCount
-                  : 0;
-              segmentTotal += categoryAvg;
+              segmentTotal += rawAvg;
             }
           }
 
