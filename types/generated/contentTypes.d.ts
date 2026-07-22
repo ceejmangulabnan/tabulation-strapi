@@ -730,7 +730,9 @@ export interface ApiSegmentSegment extends Struct.CollectionTypeSchema {
       >;
     publishedAt: Schema.Attribute.DateTime;
     scores: Schema.Attribute.Relation<'oneToMany', 'api::score.score'>;
-    scoring_mode: Schema.Attribute.Enumeration<['normalized', 'raw_category']> &
+    scoring_mode: Schema.Attribute.Enumeration<
+      ['normalized', 'raw_category', 'ranking']
+    > &
       Schema.Attribute.DefaultTo<'normalized'>;
     segment_status: Schema.Attribute.Enumeration<
       ['draft', 'inactive', 'active', 'closed']

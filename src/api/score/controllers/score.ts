@@ -41,6 +41,7 @@ export default factories.createCoreController(
         documentId: data.segment,
         populate: {
           categories: true,
+          event: true,
         },
       });
 
@@ -61,6 +62,7 @@ export default factories.createCoreController(
       }
 
       let maxScore: number;
+      let minScore = 0;
 
       switch (segment.scoring_mode) {
         case "normalized":
@@ -74,13 +76,44 @@ export default factories.createCoreController(
           maxScore = category.weight * 100;
           break;
 
+        case "ranking":
+          const activeParticipants = await strapi.documents("api::participant.participant").findMany({
+            filters: {
+              event: { documentId: { $eq: (segment.event as any).documentId } },
+              participant_status: "active",
+            },
+          });
+          maxScore = activeParticipants.length;
+          minScore = 1;
+          if (maxScore === 0) {
+            return ctx.badRequest("No active participants for ranking segment.");
+          }
+
+          const existingRanks = await strapi.documents("api::score.score").findMany({
+            filters: {
+              judge: { documentId: { $eq: data.judge } },
+              segment: { documentId: { $eq: data.segment } },
+            },
+            populate: { participant: true },
+          });
+
+          const usedRanks = new Set(existingRanks.map(s => s.value));
+          const existingForParticipant = existingRanks.find(s => s.participant?.documentId === data.participant);
+          if (existingForParticipant) {
+            return ctx.badRequest("Participant already ranked by this judge in this segment.");
+          }
+          if (usedRanks.has(data.value)) {
+            return ctx.badRequest(`Rank ${data.value} already used by this judge.`);
+          }
+          break;
+
         default:
           return ctx.badRequest("Invalid segment scoring mode.");
       }
 
-      if (data.value < 0 || data.value > maxScore) {
+      if (data.value < minScore || data.value > maxScore) {
         return ctx.badRequest(
-          `Invalid score. Allowed range: 0 to ${maxScore}.`,
+          `Invalid score. Allowed range: ${minScore} to ${maxScore}.`,
         );
       }
 
@@ -162,6 +195,7 @@ export default factories.createCoreController(
         documentId: data.segment,
         populate: {
           categories: true,
+          event: true,
         },
       });
 
@@ -182,6 +216,7 @@ export default factories.createCoreController(
       }
 
       let maxScore: number;
+      let minScore = 0;
 
       switch (segment.scoring_mode) {
         case "normalized":
@@ -195,13 +230,44 @@ export default factories.createCoreController(
           maxScore = category.weight * 100;
           break;
 
+        case "ranking":
+          const activeParticipants = await strapi.documents("api::participant.participant").findMany({
+            filters: {
+              event: { documentId: { $eq: (segment.event as any).documentId } },
+              participant_status: "active",
+            },
+          });
+          maxScore = activeParticipants.length;
+          minScore = 1;
+          if (maxScore === 0) {
+            return ctx.badRequest("No active participants for ranking segment.");
+          }
+
+          const existingRanks = await strapi.documents("api::score.score").findMany({
+            filters: {
+              judge: { documentId: { $eq: data.judge } },
+              segment: { documentId: { $eq: data.segment } },
+            },
+            populate: { participant: true },
+          });
+
+          const usedRanks = new Set(existingRanks.map(s => s.value));
+          const existingForParticipant = existingRanks.find(s => s.participant?.documentId === data.participant);
+          if (existingForParticipant && existingForParticipant.documentId !== scoreId) {
+            return ctx.badRequest("Participant already ranked by this judge in this segment.");
+          }
+          if (usedRanks.has(data.value) && scoreToUpdate.value !== data.value) {
+            return ctx.badRequest(`Rank ${data.value} already used by this judge.`);
+          }
+          break;
+
         default:
           return ctx.badRequest("Invalid segment scoring mode.");
       }
 
-      if (data.value < 0 || data.value > maxScore) {
+      if (data.value < minScore || data.value > maxScore) {
         return ctx.badRequest(
-          `Invalid score. Allowed range: 0 to ${maxScore}.`,
+          `Invalid score. Allowed range: ${minScore} to ${maxScore}.`,
         );
       }
 

@@ -439,8 +439,13 @@ export default factories.createCoreController(
         },
       });
 
+      const participantCount = filteredParticipants.length;
+      const rankMultiplier = participantCount + 1;
+
       const rows = filteredParticipants.map((p) => {
         let finalScore = 0;
+        let rankingScore = 0;
+        let hasRankingSegment = false;
 
         for (const segment of event.segments) {
           let segmentTotal = 0;
@@ -480,27 +485,29 @@ export default factories.createCoreController(
             segmentTotal += avg;
           }
 
-          /**
-           * IMPORTANT:
-           * - normalized: segmentTotal already equals segment.weight * 100
-           * - raw_category: categories already add up to segment max
-           * never multiply by segment.weight here
-           */
           if (segment.scoring_mode === "normalized") {
             finalScore += segmentTotal * segment.weight;
+          } else if (segment.scoring_mode === "ranking") {
+            rankingScore += segmentTotal;
+            hasRankingSegment = true;
           } else {
             // raw_category
             finalScore += segmentTotal;
           }
         }
 
+        const sortScore = hasRankingSegment
+          ? finalScore * rankMultiplier - rankingScore
+          : finalScore;
+
         return {
           participant_number: p.number,
           name: p.name,
           department: p.department?.name ?? "",
           gender: p.gender,
-          averaged_score: Number(finalScore.toFixed(2)),
+          averaged_score: Number(sortScore.toFixed(4)),
           raw_averaged_score: Number(finalScore),
+          ...(hasRankingSegment ? { ranking_score: Number(rankingScore.toFixed(2)) } : {}),
         };
       });
 
@@ -884,6 +891,8 @@ export default factories.createCoreController(
       const rows: FinalScoresRowUnranked[] = participants.map((p) => {
         const segment_scores: FinalScoresRowUnranked["segment_scores"] = {};
         let finalScore = 0;
+        let rankingScore = 0;
+        let hasRankingSegment = false;
 
         for (const segment of segments) {
           let segmentTotal = 0;
@@ -922,16 +931,23 @@ export default factories.createCoreController(
               averaged_score: Number(normalizedAverage.toFixed(2)),
               raw_averaged_score: normalizedAverage,
             };
-          } else {
+
+            finalScore += normalizedAverage;
+          } else if (segment.scoring_mode === "ranking") {
             segment_scores[segment.name] = {
               averaged_score: Number(segmentTotal.toFixed(2)),
               raw_averaged_score: segmentTotal,
             };
-          }
 
-          if (segment.scoring_mode === "normalized") {
-            finalScore += segmentTotal * segment.weight;
+            rankingScore += segmentTotal;
+            hasRankingSegment = true;
           } else {
+            // raw_category
+            segment_scores[segment.name] = {
+              averaged_score: Number(segmentTotal.toFixed(2)),
+              raw_averaged_score: segmentTotal,
+            };
+
             finalScore += segmentTotal;
           }
         }
@@ -944,8 +960,11 @@ export default factories.createCoreController(
           gender: p.gender,
           headshot: (p.headshot as any)?.url || null,
           segment_scores,
-          averaged_score: Number(finalScore.toFixed(2)),
+          averaged_score: hasRankingSegment
+            ? Number((finalScore * (participants.length + 1) - rankingScore).toFixed(4))
+            : Number(finalScore.toFixed(2)),
           raw_averaged_score: finalScore,
+          ...(hasRankingSegment ? { ranking_score: Number(rankingScore.toFixed(2)) } : {}),
         };
       });
 
@@ -966,6 +985,7 @@ export default factories.createCoreController(
           name: s.name,
           order: s.order,
           weight: s.weight,
+          scoring_mode: s.scoring_mode,
         })),
         results: {
           male: denseRank(maleRows),
@@ -1045,6 +1065,8 @@ export default factories.createCoreController(
       const rows: FinalScoresRowUnranked[] = participants.map((p) => {
         const segment_scores: FinalScoresRowUnranked["segment_scores"] = {};
         let finalScore = 0;
+        let rankingScore = 0;
+        let hasRankingSegment = false;
 
         for (const segment of segments) {
           let segmentTotal = 0;
@@ -1083,16 +1105,23 @@ export default factories.createCoreController(
               averaged_score: Number(normalizedAverage.toFixed(2)),
               raw_averaged_score: normalizedAverage,
             };
-          } else {
+
+            finalScore += normalizedAverage;
+          } else if (segment.scoring_mode === "ranking") {
             segment_scores[segment.name] = {
               averaged_score: Number(segmentTotal.toFixed(2)),
               raw_averaged_score: segmentTotal,
             };
-          }
 
-          if (segment.scoring_mode === "normalized") {
-            finalScore += segmentTotal * segment.weight;
+            rankingScore += segmentTotal;
+            hasRankingSegment = true;
           } else {
+            // raw_category
+            segment_scores[segment.name] = {
+              averaged_score: Number(segmentTotal.toFixed(2)),
+              raw_averaged_score: segmentTotal,
+            };
+
             finalScore += segmentTotal;
           }
         }
@@ -1105,8 +1134,11 @@ export default factories.createCoreController(
           gender: p.gender,
           headshot: (p.headshot as any)?.url || null,
           segment_scores,
-          averaged_score: Number(finalScore.toFixed(2)),
+          averaged_score: hasRankingSegment
+            ? Number((finalScore * (participants.length + 1) - rankingScore).toFixed(4))
+            : Number(finalScore.toFixed(2)),
           raw_averaged_score: finalScore,
+          ...(hasRankingSegment ? { ranking_score: Number(rankingScore.toFixed(2)) } : {}),
         };
       });
 
@@ -1127,6 +1159,7 @@ export default factories.createCoreController(
           name: s.name,
           order: s.order,
           weight: s.weight,
+          scoring_mode: s.scoring_mode,
         })),
         results: {
           male: denseRank(maleRows),

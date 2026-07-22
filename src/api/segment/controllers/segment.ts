@@ -46,10 +46,45 @@ function calculateSegmentScores(activeParticipants, scores, categories) {
   return participantScores.sort((a, b) => b.totalScore - a.totalScore);
 }
 
+function calculateRankingScores(activeParticipants, scores, categories) {
+  const activeJudgeIds = [
+    ...new Set(
+      categories.flatMap((c) => (c.active_judges || []).map((j: any) => j.id)),
+    ),
+  ];
+  const judgeCount = activeJudgeIds.length;
+
+  const participantRanks = activeParticipants.map((participant) => {
+    const ranks = scores
+      .filter(
+        (s) =>
+          s.participant?.id === participant.id &&
+          s.judge &&
+          activeJudgeIds.includes(s.judge.id),
+      )
+      .map((s) => s.value);
+
+    const avgRank =
+      ranks.length > 0
+        ? ranks.reduce((sum, r) => sum + r, 0) / ranks.length
+        : Infinity;
+
+    return {
+      ...participant,
+      totalScore: avgRank,
+      rankCount: ranks.length,
+      judgeCount,
+    };
+  });
+
+  return participantRanks.sort((a, b) => a.totalScore - b.totalScore);
+}
+
 function determineEliminations(participantScores, segment) {
   const toEliminate = [];
   const toAdvance = [];
   let tieDetected = false;
+  const isRanking = segment.scoring_mode === "ranking";
 
   const processGroup = (groupScores, advancementType, advancementValue) => {
     const groupToEliminate = [];
@@ -68,9 +103,13 @@ function determineEliminations(participantScores, segment) {
         const cutoffScore = groupScores[N - 1].totalScore;
         let participantsAtCutoff = 0;
         for (let i = 0; i < groupScores.length; i++) {
-          if (groupScores[i].totalScore >= cutoffScore) {
+          const score = groupScores[i].totalScore;
+          const isAtOrBeyondCutoff = isRanking
+            ? score <= cutoffScore
+            : score >= cutoffScore;
+          if (isAtOrBeyondCutoff) {
             groupToAdvance.push(groupScores[i]);
-            if (groupScores[i].totalScore === cutoffScore) {
+            if (score === cutoffScore) {
               participantsAtCutoff++;
             }
           } else {
@@ -78,7 +117,7 @@ function determineEliminations(participantScores, segment) {
           }
         }
         if (participantsAtCutoff > 1 && groupToAdvance.length > N) {
-          groupTieDetected = true; // Ties exceed N, requires admin confirmation
+          groupTieDetected = true;
         }
       } else {
         groupToAdvance.push(...groupScores);
@@ -93,7 +132,10 @@ function determineEliminations(participantScores, segment) {
 
       let advancedCount = 0;
       for (const participant of groupScores) {
-        if (participant.totalScore >= threshold) {
+        const passes = isRanking
+          ? participant.totalScore <= threshold
+          : participant.totalScore >= threshold;
+        if (passes) {
           groupToAdvance.push(participant);
           advancedCount++;
         } else {
@@ -295,11 +337,18 @@ export default factories.createCoreController(
         );
 
         // Calculate scores for each active participant
-        const participantScores = calculateSegmentScores(
-          activeParticipants,
-          segment.scores,
-          segment.categories,
-        );
+        const participantScores =
+          segment.scoring_mode === "ranking"
+            ? calculateRankingScores(
+                activeParticipants,
+                segment.scores,
+                segment.categories,
+              )
+            : calculateSegmentScores(
+                activeParticipants,
+                segment.scores,
+                segment.categories,
+              );
 
         console.log("Participant Scores", participantScores);
 
