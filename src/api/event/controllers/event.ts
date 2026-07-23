@@ -27,7 +27,6 @@ function denseRank<T extends Omit<RankingRow, "rank">>(
 
     prevScore = row.averaged_score;
 
-    console.log({ Row: row, Rank: rank });
     return { ...row, rank };
   });
 }
@@ -1026,9 +1025,7 @@ export default factories.createCoreController(
         }
 
         const sortScore = hasRankingSegment
-          ? Number(
-              (finalScore * rankMultiplier + rankingScore).toFixed(4),
-            )
+          ? Number((finalScore * rankMultiplier + rankingScore).toFixed(4))
           : Number(finalScore.toFixed(2));
 
         return {
@@ -1229,9 +1226,7 @@ export default factories.createCoreController(
         }
 
         const sortScore = hasRankingSegment
-          ? Number(
-              (finalScore * rankMultiplier + rankingScore).toFixed(4),
-            )
+          ? Number((finalScore * rankMultiplier + rankingScore).toFixed(4))
           : Number(finalScore.toFixed(2));
 
         return {
